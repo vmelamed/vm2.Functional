@@ -1,0 +1,271 @@
+<Project>
+    <!-- ====== The following properties detect a project's role based on its directory path and naming conventions. ======= -->
+    <PropertyGroup>
+        <!-- Property to be used in conditions for detecting the solution's main product projects -->
+        <IsProductProject Condition="
+            $([System.Text.RegularExpressions.Regex]::IsMatch($(MSBuildProjectDirectory), '[/\\]src[/\\]', System.Text.RegularExpressions.RegexOptions.IgnoreCase)) OR
+            $([System.Text.RegularExpressions.Regex]::IsMatch($(MSBuildProjectDirectory), '\.Templates$', System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            ">true</IsProductProject>
+
+        <!-- Property to be used in conditions for detecting test projects -->
+        <IsTestProject Condition="
+            $([System.Text.RegularExpressions.Regex]::IsMatch($(MSBuildProjectDirectory), '[/\\]tests?[/\\]', System.Text.RegularExpressions.RegexOptions.IgnoreCase)) AND
+            $([System.Text.RegularExpressions.Regex]::IsMatch($(MSBuildProjectName), '\.Tests$', System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            ">true</IsTestProject>
+
+        <!-- Property to be used in conditions for detecting test library projects (test utilities, test extensions, etc.) -->
+        <IsTestLibraryProject Condition="
+            $([System.Text.RegularExpressions.Regex]::IsMatch($(MSBuildProjectDirectory), '[/\\]tests?[/\\]', System.Text.RegularExpressions.RegexOptions.IgnoreCase)) AND
+            !$([System.Text.RegularExpressions.Regex]::IsMatch($(MSBuildProjectName), '\.Tests$', System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            ">true</IsTestLibraryProject>
+
+        <!-- Property to be used in conditions for detecting benchmark tests -->
+        <IsInBenchmarksFolder Condition="
+            $([System.Text.RegularExpressions.Regex]::IsMatch($(MSBuildProjectDirectory), '[/\\]benchmarks?[/\\]', System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            ">true</IsInBenchmarksFolder>
+
+        <!-- Property to be used in conditions for detecting example usage projects -->
+        <IsInExamplesFolder Condition="
+            $([System.Text.RegularExpressions.Regex]::IsMatch($(MSBuildProjectDirectory), '[/\\]examples?[/\\]', System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+            ">true</IsInExamplesFolder>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <GITHUB_RUN_NUMBER Condition="'$(GITHUB_RUN_NUMBER)' == ''">0</GITHUB_RUN_NUMBER>
+
+        <!-- To use if there are OS-specific differences in the public .NET APIs -->
+        <DefineConstants Condition="'$(OS)' == 'WINDOWS_NT'">$(DefineConstants);WINDOWS</DefineConstants>
+        <DefineConstants Condition="'$(OS)' != 'WINDOWS_NT'">$(DefineConstants);UNIX</DefineConstants>
+
+        <!-- Use to define custom preprocessor symbols as a semicolon-separated list, e.g. dotnet build -p:preprocessor_symbols="SHORT_RUN;FEATURE_A;FEATURE_B"
+             without overriding the rest of the symbols like DEBUG, TRACE, etc. -->
+        <DefineConstants Condition="'$([System.String]::IsNullOrWhiteSpace($(preprocessor_symbols)))' != 'true'
+            ">$(preprocessor_symbols);$(DefineConstants)</DefineConstants>
+
+        <RepoRoot>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), 'Directory.Build.props'))</RepoRoot>
+    </PropertyGroup>
+
+    <!-- ================ Common Settings for All projects ================ -->
+    <PropertyGroup Label="Packages">
+        <TargetFramework>net10.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
+        <AnalysisLevel>latest</AnalysisLevel>
+        <WarningLevel>9999</WarningLevel>
+        <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+        <WarningsAsErrors>$(WarningsAsErrors);NU1605;NU1608;NU1701;NU1702;</WarningsAsErrors>
+        <NoWarn>$(NoWarn);IDE0058;IDE0290;IDE0130;</NoWarn>
+        <Deterministic>true</Deterministic>
+        <DebugType>portable</DebugType>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+        <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
+        <NuGetAuditLevel>moderate</NuGetAuditLevel>
+        <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+        <MinVerTagPrefix>v</MinVerTagPrefix>
+        <MinVerDefaultPreReleaseIdentifiers>preview</MinVerDefaultPreReleaseIdentifiers>
+        <!-- Fallback defaults for MinVer variables (e.g., Dependabot runs without git tags) -->
+        <MinVerMajor Condition="'$(MinVerMajor)' == ''">0</MinVerMajor>
+        <MinVerMinor Condition="'$(MinVerMinor)' == ''">0</MinVerMinor>
+        <MinVerPatch Condition="'$(MinVerPatch)' == ''">1</MinVerPatch>
+        <AssemblyVersion>$(MinVerMajor).$(MinVerMinor).$(GITHUB_RUN_NUMBER).$(MinVerPatch)</AssemblyVersion>
+        <FileVersion>$(MinVerMajor).$(MinVerMinor).$(MinVerPatch).$(GITHUB_RUN_NUMBER)</FileVersion>
+        <DOTNET_CLI_TELEMETRY_OPTOUT>true</DOTNET_CLI_TELEMETRY_OPTOUT>
+        <DOTNET_SKIP_FIRST_TIME_EXPERIENCE>true</DOTNET_SKIP_FIRST_TIME_EXPERIENCE>
+    </PropertyGroup>
+
+    <!-- ================ Package properties for all vm2 packages ================ -->
+    <PropertyGroup Label="NuGetCommon" Condition="'$(IsProductProject)' == 'true'">
+        <IsPackable>true</IsPackable>
+        <Company>vm</Company>
+        <Product>vm2</Product>
+        <ProductName>vm2 packages and tools</ProductName>
+        <Authors>Val Melamed</Authors>
+        <Copyright>Copyright ©2025-2026 vm</Copyright>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+        <RepositoryType>git</RepositoryType>
+        <IncludeSymbols>True</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <EnablePackageValidation>true</EnablePackageValidation>
+        <EmbedAllSources>true</EmbedAllSources>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    </PropertyGroup>
+
+    <!-- The following group builds the product project(s) as AOT compatible and enforces verification of the dependencies AOT compatibility -->
+    <PropertyGroup Label="AoT" Condition="'$(IsProductProject)' == 'true'">
+        <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+        <IsTrimmable>true</IsTrimmable>
+        <IsAotCompatible>true</IsAotCompatible>
+        <VerifyReferenceAotCompatibility>true</VerifyReferenceAotCompatibility>
+    </PropertyGroup>
+
+    <!-- ================ Common Package References for All projects ================ -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
+        <PackageReference Include="MinVer" PrivateAssets="all" />
+        <!-- Add more, repo-specific package references below in the designated placeholder -->
+    </ItemGroup>
+
+    <!-- Print version info after build for all projects - CI will capture it in the Step Summary -->
+    <Target Name="PrintVersion" AfterTargets="Build">
+        <Message Importance="high" Text="AssemblyVersion: $(AssemblyVersion)" />
+        <Message Importance="high" Text="FileVersion: $(FileVersion)" />
+        <Message Importance="high" Text="InformationalVersion: $(InformationalVersion)" />
+        <Message Importance="high" Text="PackageVersion: $(PackageVersion)" />
+        <Message Importance="high" Text="Version: $(Version)" />
+    </Target>
+
+    <!-- ================ Test Projects Settings ================ -->
+    <!-- Test stack:
+          Microsoft Testing Platform (MTP) with
+          xUnit,
+          FluentAssertions
+      For *.Tests projects in the ./test folder:
+    -->
+    <PropertyGroup Condition="$(IsTestProject) == 'true'">
+        <!-- Test projects settings -->
+        <OutputType>Exe</OutputType>
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
+        <NoWarn>
+            $(NoWarn);
+            CS0618;CS1572;CS1573;CS1574;CS1591;CS1711;
+            CA1701;CA1702;CA1707;CA1806;CA2211;
+            IDE0021;IDE0022;IDE0039;IDE0065;IDE1006;IDE2000;IDE2002;IDE0058;IDE0290
+        </NoWarn>
+        <!-- Enable MTP v2 For more information on Microsoft Testing Platform support in xUnit.net, visit: https://xunit.net/docs/getting-started/v3/microsoft-testing-platform -->
+        <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    </PropertyGroup>
+    <PropertyGroup Condition="$(IsTestProject) == 'true' AND '$(BuildingInsideVisualStudio)' == 'true'">
+        <!-- MTP v2: Configure coverage with coverage.settings.xml only outside VS — VS has its own coverage tools: -->
+        <TestingPlatformCommandLineArguments>$(TestingPlatformCommandLineArguments) --coverage --coverage-output-format cobertura --coverage-settings "$(RepoRoot)coverage.settings.xml"</TestingPlatformCommandLineArguments>
+        <!-- Workaround: VS 2026 Test Explorer continuously re-evaluates projects with TestingPlatformServer/TestContainer
+             capabilities, causing an infinite project reload loop (Solution Explorer flickering).  Disabling the server
+             capability stops the loop.  Tests still run from CLI and VS Build+Run (Ctrl+R,A): -->
+        <DisableTestingPlatformServerCapability>true</DisableTestingPlatformServerCapability>
+    </PropertyGroup>
+
+    <ItemGroup Condition="$(IsTestProject) == 'true'">
+        <!-- Use MTP v2 for all environments - VS 2022 should support it -->
+        <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" />
+        <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
+        <PackageReference Include="xunit.v3.mtp-v2" />
+        <PackageReference Include="FluentAssertions" />
+        <PackageReference Include="NSubstitute" />
+        <PackageReference Include="vm2.TestUtilities" />
+    </ItemGroup>
+    <ItemGroup Condition="$(IsTestProject) == 'true' AND '$(BuildingInsideVisualStudio)' == 'true'">
+        <PackageReference Include="Microsoft.Testing.Platform.MSBuild" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="xunit.runner.visualstudio" />
+    </ItemGroup>
+
+    <!-- Common usings for the test projects: -->
+    <ItemGroup Condition="$(IsTestProject) == 'true'">
+        <Using Include="Xunit" />
+        <Using Include="FluentAssertions" />
+        <Using Include="NSubstitute" />
+    </ItemGroup>
+
+    <!-- Copy repo-level test configuration to test output directory -->
+    <ItemGroup Condition="$(IsTestProject) == 'true'">
+        <Content Include="$(RepoRoot)testconfig.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+
+    <!-- ================ Test Library Projects' Settings ================ -->
+    <!-- Test stack:
+          Microsoft Testing Platform (MTP) with
+          xUnit,
+          FluentAssertions
+      For non-test projects in the ./test folder (utilities, extensions, etc.):
+    -->
+    <PropertyGroup Condition="$(IsTestLibraryProject) == 'true'">
+        <!-- Test libraries projects settings -->
+        <IsPackable>false</IsPackable>
+        <IncludeSymbols>False</IncludeSymbols>
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
+        <NoWarn>
+            $(NoWarn);
+            CS0618;CS1572;CS1573;CS1574;CS1591;CS1711;
+            CA1701;CA1702;CA1707;CA1806;CA2211;
+            IDE0021;IDE0022;IDE0039;IDE0065;IDE1006;IDE2000;IDE2002;IDE0058;IDE0290</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup Condition="$(IsTestLibraryProject) == 'true'">
+        <PackageReference Include="xunit.v3.extensibility.core" />
+        <PackageReference Include="FluentAssertions" />
+        <PackageReference Include="NSubstitute" />
+    </ItemGroup>
+
+    <!-- Common usings for test library projects in the ./test folder: -->
+    <ItemGroup Condition="$(IsTestLibraryProject) == 'true'">
+        <Using Include="Xunit" />
+        <Using Include="FluentAssertions" />
+        <Using Include="FluentAssertions.Formatting" />
+        <Using Include="FluentAssertions.Extensibility" />
+        <Using Include="NSubstitute" />
+    </ItemGroup>
+
+    <!-- ================ Benchmark Projects Settings ================ -->
+    <!-- Stack:
+          BenchmarkDotNet
+    -->
+    <PropertyGroup Condition="$(IsInBenchmarksFolder) == 'true'">
+        <!-- Benchmark projects settings -->
+        <OutputType>Exe</OutputType>
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
+        <NoWarn>
+            $(NoWarn);
+            CS0618;CS1572;CS1573;CS1574;CS1591;CS1711;
+            CA1701;CA1702;CA1707;CA1806;CA2211;
+            IDE0021;IDE0022;IDE0039;IDE0065;IDE1006;IDE2000;IDE2002;IDE0058;IDE0290
+        </NoWarn>
+        <TieredPGO>false</TieredPGO>
+        <!-- To show up in the VS test explorer, see also below in the package references:
+        <RestorePackagesWithLockFile Condition="'$(BuildingInsideVisualStudio)' == 'true'">false</RestorePackagesWithLockFile>
+        -->
+    </PropertyGroup>
+
+    <!-- common packages for benchmark projects in the ./benchmarks folder: -->
+    <ItemGroup Condition="$(IsInBenchmarksFolder) == 'true'">
+        <PackageReference Include="BenchmarkDotNet" />
+        <PackageReference Include="BenchmarkDotNet.Annotations" />
+        <!-- To show up in the VS test explorer (with some perf. penalties!)
+        <PackageReference Include="BenchmarkDotNet.TestAdapter" />
+        -->
+        <!-- for running with Visual Studio profiler:
+        <PackageReference Include="Microsoft.VisualStudio.DiagnosticsHub.BenchmarkDotNetDiagnosers" />
+        -->
+    </ItemGroup>
+
+    <PropertyGroup>
+        <DefineConstants Condition="
+            $(IsInBenchmarksFolder) == 'true' AND '$(CI)' != 'true'
+            ">$(DefineConstants);SHORT_RUN</DefineConstants>
+    </PropertyGroup>
+
+    <!-- common usings for benchmark projects in the ./benchmarks folder: -->
+    <ItemGroup Condition="$(IsInBenchmarksFolder) == 'true'">
+        <Using Include="BenchmarkDotNet" />
+        <Using Include="BenchmarkDotNet.Attributes" />
+        <Using Include="BenchmarkDotNet.Configs" />
+        <Using Include="BenchmarkDotNet.Jobs" />
+        <Using Include="BenchmarkDotNet.Order" />
+        <Using Include="BenchmarkDotNet.Running" />
+    </ItemGroup>
+
+    <!-- settings for example projects in the ./examples folder: -->
+    <PropertyGroup Condition="$(IsInExamplesFolder) == 'true'">
+        <!-- Example projects settings -->
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- ADD REPO-SPECIFIC PACKAGE REFERENCES HERE -->
+    </ItemGroup>
+
+</Project>

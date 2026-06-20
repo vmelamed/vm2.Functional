@@ -1,0 +1,48 @@
+<Solution>
+    <Folder Name="/.github/">
+        <File Path=".github/dependabot.yml" />
+        <File Path=".github/PULL_REQUEST_TEMPLATE.md" />
+    </Folder>
+    <Folder Name="/.github/workflows/">
+        <File Path=".github/workflows/AutoMerge.yaml" />
+        <File Path=".github/workflows/CI.yaml" />
+        <File Path=".github/workflows/ClearCache.yaml" />
+        <File Path=".github/workflows/Prerelease.yaml" />
+        <File Path=".github/workflows/Release.yaml" />
+    </Folder>
+    <Folder Name="/benchmarks/">
+        <Project Path="benchmarks/Functional.Benchmarks/Functional.Benchmarks.csproj" />
+    </Folder>
+    <Folder Name="/changelog/">
+        <File Path="changelog/cliff.prerelease.toml" />
+        <File Path="changelog/cliff.release-header.toml" />
+    </Folder>
+    <Folder Name="/docs/">
+        <File Path="docs/README.md" />
+    </Folder>
+    <Folder Name="/examples/">
+        <File Path="examples/Program.cs" />
+    </Folder>
+    <Folder Name="/solution Items/">
+        <File Path=".editorconfig" />
+        <File Path=".gitattributes" />
+        <File Path=".gitignore" />
+        <File Path=".gitmessage" />
+        <File Path="CHANGELOG.md" />
+        <File Path="codecov.yaml" />
+        <File Path="coverage.settings.xml" />
+        <File Path="Directory.Build.props" />
+        <File Path="Directory.Packages.props" />
+        <File Path="global.json" />
+        <File Path="LICENSE" />
+        <File Path="NuGet.config" />
+        <File Path="README.md" />
+        <File Path="testconfig.json" />
+    </Folder>
+    <Folder Name="/src/">
+        <Project Path="src/Functional/Functional.csproj" />
+    </Folder>
+    <Folder Name="/tests/">
+        <Project Path="tests/Functional.Tests/Functional.Tests.csproj" />
+    </Folder>
+</Solution>

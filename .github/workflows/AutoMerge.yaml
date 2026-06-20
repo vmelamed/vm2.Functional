@@ -1,0 +1,26 @@
+name: "Auto-merge automated dependency PRs"
+
+# Automatically enables auto-merge (rebase) on Dependabot PRs and on
+# github-actions[bot] PRs labelled 'dependencies' (e.g. lock-file refresh).
+# GitHub will merge the PR once all required status checks pass.
+
+on:
+  pull_request_target:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: >-
+      github.actor == 'dependabot[bot]' ||
+      (github.actor == 'github-actions[bot]' &&
+       contains(github.event.pull_request.labels.*.name, 'dependencies'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge
+        run: gh pr merge "$PR_URL" --auto --rebase
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ github.token }}

@@ -1,0 +1,53 @@
+version: 2
+registries:
+  github-packages:
+    type: nuget-feed
+    url: https://nuget.pkg.github.com/vmelamed/index.json
+    username: vmelamed
+    password: ${{secrets.GH_PACKAGES_TOKEN}}
+
+updates:
+  # Update NuGet packages
+  - package-ecosystem: "nuget"
+    directory: "/"
+    registries:
+      - github-packages
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+
+    # Group minor and patch updates together
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+    # Review major updates separately
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+    labels:
+      - "dependencies"
+      - "automated"
+
+  # Also update GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "github-actions"
+      - "automated"

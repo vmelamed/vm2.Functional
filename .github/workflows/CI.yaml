@@ -1,0 +1,251 @@
+# Comments marked with *TODO* are the customization points where you should adjust the text of this workflow template to the
+# needs of your your repo.
+name: "CI: Build, Test, Benchmark, Pack"
+
+on:
+  push:
+    branches:
+      - "**" # trigger on push for all branches
+
+  pull_request:
+    branches:
+      - "**" # trigger on PR for all branches.
+
+  workflow_dispatch:
+    inputs:
+      runners-os:
+        description: Comma-separated runners OS-es
+        type: string
+        # Note: there is a known GitHub actions issue: the workflow dispatch UI doesn't properly handle JSON strings with quotes -
+        # it removes the quotes. E.g. entering '["ubuntu-latest"]' in the UI prompt removes the inner quotes and it becomes the
+        # invalid JSON: '[ubuntu-latest]'.
+        # *TODO* Adjust the default runner OS or OS-es as needed.
+        default: ubuntu-latest
+
+      preprocessor-symbols:
+        description: Preprocessor symbols separated by semicolon, space, or comma.
+        type: string
+        # *TODO* Adjust the default preprocessor symbols as needed.
+        default: "SHORT_RUN"
+
+      reset-benchmark-thresholds:
+        description: Reset Bencher thresholds, if performance degradation is expected.
+        type: boolean
+        default: false
+
+      skip-benchmarks:
+        description: Skip benchmark tests. WARNING! THE CI WORKFLOW WILL FAIL -- use only for faster CI test run.
+        type: boolean
+        default: false
+
+      skip-tests:
+        description: Skip unit/integration tests. WARNING! THE CI WORKFLOW WILL FAIL -- use only for faster CI test run.
+        type: boolean
+        default: false
+
+      skip-packages:
+        description: Skip packaging the artifacts. WARNING! THE CI WORKFLOW WILL FAIL -- use only for faster CI test run.
+        type: boolean
+        default: false
+
+# Concurrency: cancel in-progress runs for the same ref
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  # The value of all *_PROJECTS variables must be specified as a string containing a JSON array of strings - path(s) to the project(s).
+  # NOTE the yaml folding indicator `>-`. It allows to enter single value (scalar, array, object, long string) values on multiple
+  # text lines with no need for escaping, which might be more readable, and writable. Do not indent the text of the value, it
+  # should start at the same column as the opening square bracket. E.g.
+  # BUILD_PROJECTS: >-
+  #   [
+  #   "src/Project/Project.slnx"  # no indentation for the text of the value, it should start at the same column as the opening square bracket
+  #   ]
+
+  # If not specified or empty, no actual building will be run (e.g. template projects).
+  # *TODO* The source code project(s) or solution(s) to build. Must be a JSON array of strings containing path(s) to the
+  # buildable project(s) or solution(s).
+  BUILD_PROJECTS: >-
+    [
+    "vm2.Functional.slnx"
+    ]
+  # If not specified or empty, no tests will be built or run. Not having tests is not typical and not desirable, but possible.
+  # For example projects that contain only the code of the deliverables, e.g. projects in early stages of development, or DevOps
+  # projects containing scripts and/or markup and/or metadata, template projects, prototype projects, experimentation, etc.
+  # *TODO* The test project(s) to build and run. Must be a JSON array of strings containing path(s) to the buildable and runnable test project(s).
+  TEST_PROJECTS: >-
+    [
+    "tests/Functional.Tests/Functional.Tests.csproj"
+    ]
+  # If not specified or empty, no benchmarks will be built or run.
+  # *TODO* The benchmark project(s) to build and run. Must be a JSON array of strings containing path(s) to the buildable and runnable benchmark project(s).
+  BENCHMARK_PROJECTS: >-
+    [
+    "benchmarks/Functional.Benchmarks/Functional.Benchmarks.csproj"
+    ]
+  # If not specified or empty, no projects will be packed for NuGet validation during CI.
+  # *TODO* The project(s) to pack for NuGet validation during CI. Must be a JSON array of strings containing path(s) to the packable project(s).
+  # If not specified, the default is ["ubuntu-latest"].
+  # *TODO* The OS-es of the runner(s) to use for building and testing. Must be a JSON array of strings containing OS-es.
+  RUNNERS_OS: >-
+    [
+    "ubuntu-latest"
+    ]
+  # Preprocessor symbols separated by semicolon, space, or comma. E.g. "SHORT_RUN;FEATURE_A;FEATURE_B" or "SHORT_RUN FEATURE_A FEATURE_B" or "SHORT_RUN,FEATURE_A,FEATURE_B".
+  # *TODO* Space, comma, or semicolon-separated preprocessor symbols to pass to the compiler.
+  PREPROCESSOR_SYMBOLS: ""
+  DOTNET_VERSION: ${{ vars.DOTNET_VERSION || '10.0.x' }}
+  CONFIGURATION: ${{ vars.CONFIGURATION || 'Release' }}
+  MIN_COVERAGE_PCT: ${{ vars.MIN_COVERAGE_PCT || 80 }}
+  MAX_REGRESSION_PCT: ${{ vars.MAX_REGRESSION_PCT || 20 }}
+  # Absolute (static) GC-collection caps per 1000 operations. Unlike MAX_REGRESSION_PCT (a relative %), these are absolute
+  # limits because GC collection counts sit near zero, where a percentage test is mathematically degenerate (any movement off a
+  # ~0 baseline is an infinite % change). Override per package via repo vars to match the package's allocation profile.
+  # *TODO* Tune to the package's benchmarks: Gen1 over the cap signals objects surviving Gen0; Gen2 should be ~never.
+  MAX_GEN1_COLLECTS: ${{ vars.MAX_GEN1_COLLECTS || 2 }}
+  MAX_GEN2_COLLECTS: ${{ vars.MAX_GEN2_COLLECTS || 1 }}
+  MINVERTAGPREFIX: ${{ vars.MINVERTAGPREFIX || 'v' }}
+  MINVERDEFAULTPRERELEASEIDENTIFIERS: ${{ vars.MINVERDEFAULTPRERELEASEIDENTIFIERS || 'preview.0' }}
+  RESET_BENCHMARK_THRESHOLDS: ${{ vars.RESET_BENCHMARK_THRESHOLDS || 'false' }}
+  VERBOSE: ${{ vars.VERBOSE || 'false' }}
+
+jobs:
+  prerun-ci:
+    name: Prerun-CI
+    runs-on: ubuntu-latest # in this workflow the runner doesn't matter - we're just preparing the inputs for the next workload(s).
+    permissions:
+      pull-requests: read
+    if: github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]')
+    outputs:
+      build-projects: ${{ steps.gather-params.outputs.build-projects }}
+      test-projects: ${{ steps.gather-params.outputs.test-projects }}
+      benchmark-projects: ${{ steps.gather-params.outputs.benchmark-projects }}
+      package-projects: ${{ steps.gather-params.outputs.package-projects }}
+      runners-os: ${{ steps.gather-params.outputs.runners-os }}
+      dotnet-version: ${{ steps.gather-params.outputs.dotnet-version }}
+      configuration: ${{ steps.gather-params.outputs.configuration }}
+      preprocessor-symbols: ${{ steps.gather-params.outputs.preprocessor-symbols }}
+      min-coverage-pct: ${{ steps.gather-params.outputs.min-coverage-pct }}
+      max-regression-pct: ${{ steps.gather-params.outputs.max-regression-pct }}
+      max-gen1-collects: ${{ steps.gather-params.outputs.max-gen1-collects }}
+      max-gen2-collects: ${{ steps.gather-params.outputs.max-gen2-collects }}
+      minver-tag-prefix: ${{ steps.gather-params.outputs.minver-tag-prefix }}
+      minver-prerelease-id: ${{ steps.gather-params.outputs.minver-prerelease-id }}
+      reset-benchmark-thresholds: ${{ steps.gather-params.outputs.reset-benchmark-thresholds }}
+      skip-benchmarks: ${{ steps.gather-params.outputs.skip-benchmarks }}
+      skip-tests: ${{ steps.gather-params.outputs.skip-tests }}
+      skip-packages: ${{ steps.gather-params.outputs.skip-packages }}
+      skip-push: ${{ steps.gather-params.outputs.skip-push }}
+    steps:
+      - name: Gather CI inputs
+        id: gather-params
+        uses: vmelamed/vm2.DevOps/.github/actions/gather-inputs@main
+        with:
+          build-projects: ${{ env.BUILD_PROJECTS }}
+          test-projects: ${{ env.TEST_PROJECTS }}
+          benchmark-projects: ${{ env.BENCHMARK_PROJECTS }}
+          package-projects: ${{ env.PACKAGE_PROJECTS }}
+          runners-os: ${{ env.RUNNERS_OS }}
+          preprocessor-symbols: ${{ env.PREPROCESSOR_SYMBOLS }}
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          configuration: ${{ env.CONFIGURATION }}
+          min-coverage-pct: ${{ env.MIN_COVERAGE_PCT }}
+          max-regression-pct: ${{ env.MAX_REGRESSION_PCT }}
+          max-gen1-collects: ${{ env.MAX_GEN1_COLLECTS }}
+          max-gen2-collects: ${{ env.MAX_GEN2_COLLECTS }}
+          minver-tag-prefix: ${{ env.MINVERTAGPREFIX }}
+          minver-prerelease-id: ${{ env.MINVERDEFAULTPRERELEASEIDENTIFIERS }}
+          reset-benchmark-thresholds: ${{ env.RESET_BENCHMARK_THRESHOLDS }}
+          verbose: ${{ env.VERBOSE }}
+          dispatch-runners-os: ${{ inputs.runners-os }}
+          dispatch-preprocessor-symbols: ${{ inputs.preprocessor-symbols }}
+          dispatch-reset-benchmark-thresholds: ${{ inputs.reset-benchmark-thresholds }}
+          dispatch-skip-benchmarks: ${{ inputs.skip-benchmarks }}
+          dispatch-skip-tests: ${{ inputs.skip-tests }}
+          dispatch-skip-packages: ${{ inputs.skip-packages }}
+
+  run-ci:
+    name: "Run CI"
+    needs:
+      - prerun-ci
+    if: ${{ needs.prerun-ci.outputs.skip-push != 'true' }}
+    uses: vmelamed/vm2.DevOps/.github/workflows/_ci.yaml@main
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      BENCHER_API_TOKEN: ${{ secrets.BENCHER_API_TOKEN }}
+      REPORTGENERATOR_LICENSE: ${{ secrets.REPORTGENERATOR_LICENSE }}
+    permissions:
+      contents: read # Required to checkout the code
+      packages: read # Required to restore GitHub Packages NuGet packages
+      pull-requests: write # Required to comment on PRs
+      checks: write # Required to create GitHub Checks
+    with:
+      build-projects: ${{ needs.prerun-ci.outputs.build-projects }}
+      test-projects: ${{ needs.prerun-ci.outputs.test-projects }}
+      benchmark-projects: ${{ needs.prerun-ci.outputs.benchmark-projects }}
+      package-projects: ${{ needs.prerun-ci.outputs.package-projects }}
+      runners-os: ${{ needs.prerun-ci.outputs.runners-os }}
+      dotnet-version: ${{ needs.prerun-ci.outputs.dotnet-version }}
+      configuration: ${{ needs.prerun-ci.outputs.configuration }}
+      preprocessor-symbols: ${{ needs.prerun-ci.outputs.preprocessor-symbols }}
+      min-coverage-pct: ${{ fromJSON(needs.prerun-ci.outputs.min-coverage-pct) }}
+      max-regression-pct: ${{ fromJSON(needs.prerun-ci.outputs.max-regression-pct) }}
+      max-gen1-collects: ${{ fromJSON(needs.prerun-ci.outputs.max-gen1-collects) }}
+      max-gen2-collects: ${{ fromJSON(needs.prerun-ci.outputs.max-gen2-collects) }}
+      minver-tag-prefix: ${{ needs.prerun-ci.outputs.minver-tag-prefix }}
+      minver-prerelease-id: ${{ needs.prerun-ci.outputs.minver-prerelease-id }}
+      reset-benchmark-thresholds: ${{ needs.prerun-ci.outputs.reset-benchmark-thresholds == 'true' }}
+      skip-benchmarks: ${{ needs.prerun-ci.outputs.skip-benchmarks == 'true' }}
+      skip-tests: ${{ needs.prerun-ci.outputs.skip-tests == 'true' }}
+      skip-packages: ${{ needs.prerun-ci.outputs.skip-packages == 'true' }}
+
+  # Gate job: single required status check for branch protection.
+  # Replaces per-job required checks that break with reusable workflows + matrix (check names include
+  # workflow prefix, matrix params, inner job names, and event suffixes that are impossible to predict).
+  postrun-ci:
+    name: Postrun-CI
+    needs:
+      - prerun-ci
+      - run-ci
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup DevOps environment variables
+        uses: vmelamed/vm2.DevOps/.github/actions/setup-env@main
+
+      - name: Evaluate CI result
+        shell: bash
+        run: |
+          {
+              if [[ "${{ needs.prerun-ci.result }}" == "failure" || "${{ needs.prerun-ci.result }}" == "cancelled" ]]; then
+                  echo "❌  ERROR: Arguments gathering and preparation failed"
+                  exit 1
+              fi
+              if [[ "${{ needs.run-ci.result }}" == "skipped" ]]; then
+                  echo "⚠️  WARNING: CI was skipped (push to non-main branch with open PR). Prerelease will not be triggered."
+                  echo "              CI skipped (prerun-ci: ${{ needs.prerun-ci.result }}, run-ci: skipped)"
+              elif [[ "${{ needs.run-ci.result }}" == "failure" || "${{ needs.run-ci.result }}" == "cancelled" ]]; then
+                  echo "❌  ERROR: CI pipeline ${{ needs.run-ci.result }}"
+                  exit 1
+              else
+                  echo "✅  INFO: CI completed (prerun-ci: ${{ needs.prerun-ci.result }}, run-ci: ${{ needs.run-ci.result }})"
+              fi
+
+              exit_code=0
+
+              if [[ "${{ needs.prerun-ci.outputs.skip-benchmarks }}" == "true" ]]; then
+                  echo "⚠️  WARNING: Benchmarks were skipped. The CI workflow is marked as failed, but it was intentional to save time. Use this option only for testing non-benchmark CI jobs faster."
+                  exit_code=1
+              fi
+              if [[ "${{ needs.prerun-ci.outputs.skip-tests }}" == "true" ]]; then
+                  echo "⚠️  WARNING: Tests were skipped. The CI workflow is marked as failed, but it was intentional to save time. Use this option only for testing non-test CI jobs faster."
+                  exit_code=1
+              fi
+              if [[ "${{ needs.prerun-ci.outputs.skip-packages }}" == "true" ]]; then
+                  echo "⚠️  WARNING: Building packages was skipped. The CI workflow is marked as failed, but it was intentional to save time. Use this option only for testing non-package CI jobs faster."
+                  exit_code=1
+              fi
+
+              exit $exit_code
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,26 @@
+name: "Rebuild Benchmark History"
+
+# Manually triggered (UI/mobile) per-repo entry point. Re-records this repo's benchmark history to Bencher.dev by running
+# every benchmark project under benchmarks/ N times (record-only: no thresholds; no failure on a noisy point). Use it when a
+# runner image change or a benchmark restructure invalidates the existing baseline. Shared and identical across repos — a repo
+# with no benchmarks/ simply has nothing to do.
+
+on:
+  workflow_dispatch:
+    inputs:
+      repeat:
+        description: Independent runs to record per benchmark
+        type: number
+        default: 10
+
+permissions:
+  contents: read
+  packages: read # Required to restore GitHub Packages NuGet packages
+
+jobs:
+  rebuild:
+    uses: vmelamed/vm2.DevOps/.github/workflows/_rebuild_bench_history.yaml@main
+    secrets:
+      BENCHER_API_TOKEN: ${{ secrets.BENCHER_API_TOKEN }}
+    with:
+      repeat: ${{ fromJSON(inputs.repeat) }}
