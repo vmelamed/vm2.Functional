@@ -1,6 +1,7 @@
-# Comments marked with *TODO* are the customization points where you should adjust the text of this workflow template to the
-# needs of your your repo.
 name: "CI: Build, Test, Benchmark, Pack"
+
+# Continuous Integration (CI) workflow for building, testing, benchmarking, and packaging the projects in the repo.
+# This workflow is triggered on push, pull request, and can also be manually triggered via workflow_dispatch.
 
 on:
   push:
@@ -54,55 +55,31 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # The value of all *_PROJECTS variables must be specified as a string containing a JSON array of strings - path(s) to the project(s).
-  # NOTE the yaml folding indicator `>-`. It allows to enter single value (scalar, array, object, long string) values on multiple
-  # text lines with no need for escaping, which might be more readable, and writable. Do not indent the text of the value, it
-  # should start at the same column as the opening square bracket. E.g.
-  # BUILD_PROJECTS: >-
-  #   [
-  #   "src/Project/Project.slnx"  # no indentation for the text of the value, it should start at the same column as the opening square bracket
-  #   ]
-
-  # If not specified or empty, no actual building will be run (e.g. template projects).
-  # *TODO* The source code project(s) or solution(s) to build. Must be a JSON array of strings containing path(s) to the
-  # buildable project(s) or solution(s).
   BUILD_PROJECTS: >-
     [
     "vm2.Functional.slnx"
     ]
-  # If not specified or empty, no tests will be built or run. Not having tests is not typical and not desirable, but possible.
-  # For example projects that contain only the code of the deliverables, e.g. projects in early stages of development, or DevOps
-  # projects containing scripts and/or markup and/or metadata, template projects, prototype projects, experimentation, etc.
-  # *TODO* The test project(s) to build and run. Must be a JSON array of strings containing path(s) to the buildable and runnable test project(s).
-  TEST_PROJECTS: >-
+  # TEST_PROJECTS: >-
+  #   [
+  #   "tests/Functional.Tests/Functional.Tests.csproj"
+  #   ]
+  # BENCHMARK_PROJECTS: >-
+  #   [
+  #   "benchmarks/Functional.Benchmarks/Functional.Benchmarks.csproj"
+  #   ]
+  PACKAGE_PROJECTS: >-
     [
-    "tests/Functional.Tests/Functional.Tests.csproj"
+    "src/MyPackage/MyPackage.csproj"
     ]
-  # If not specified or empty, no benchmarks will be built or run.
-  # *TODO* The benchmark project(s) to build and run. Must be a JSON array of strings containing path(s) to the buildable and runnable benchmark project(s).
-  BENCHMARK_PROJECTS: >-
-    [
-    "benchmarks/Functional.Benchmarks/Functional.Benchmarks.csproj"
-    ]
-  # If not specified or empty, no projects will be packed for NuGet validation during CI.
-  # *TODO* The project(s) to pack for NuGet validation during CI. Must be a JSON array of strings containing path(s) to the packable project(s).
-  # If not specified, the default is ["ubuntu-latest"].
-  # *TODO* The OS-es of the runner(s) to use for building and testing. Must be a JSON array of strings containing OS-es.
   RUNNERS_OS: >-
     [
     "ubuntu-latest"
     ]
-  # Preprocessor symbols separated by semicolon, space, or comma. E.g. "SHORT_RUN;FEATURE_A;FEATURE_B" or "SHORT_RUN FEATURE_A FEATURE_B" or "SHORT_RUN,FEATURE_A,FEATURE_B".
-  # *TODO* Space, comma, or semicolon-separated preprocessor symbols to pass to the compiler.
   PREPROCESSOR_SYMBOLS: ""
   DOTNET_VERSION: ${{ vars.DOTNET_VERSION || '10.0.x' }}
   CONFIGURATION: ${{ vars.CONFIGURATION || 'Release' }}
   MIN_COVERAGE_PCT: ${{ vars.MIN_COVERAGE_PCT || 80 }}
   MAX_REGRESSION_PCT: ${{ vars.MAX_REGRESSION_PCT || 20 }}
-  # Absolute (static) GC-collection caps per 1000 operations. Unlike MAX_REGRESSION_PCT (a relative %), these are absolute
-  # limits because GC collection counts sit near zero, where a percentage test is mathematically degenerate (any movement off a
-  # ~0 baseline is an infinite % change). Override per package via repo vars to match the package's allocation profile.
-  # *TODO* Tune to the package's benchmarks: Gen1 over the cap signals objects surviving Gen0; Gen2 should be ~never.
   MAX_GEN1_COLLECTS: ${{ vars.MAX_GEN1_COLLECTS || 2 }}
   MAX_GEN2_COLLECTS: ${{ vars.MAX_GEN2_COLLECTS || 1 }}
   MINVERTAGPREFIX: ${{ vars.MINVERTAGPREFIX || 'v' }}

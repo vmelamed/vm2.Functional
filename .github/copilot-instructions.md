@@ -1,13 +1,13 @@
-# Copilot Instructions for vm2.Functional
+# Copilot Instructions for vm2.MyPackage
 
 ## Shared Conventions
 
-Copilot MUST read and follow [CONVENTIONS.md](CONVENTIONS.md) before suggesting or making changes.
+Copilot MUST read and follow [CONVENTIONS.md](CONVENTIONS.md)
 
-Do not duplicate shared rules here — shared instructions belong in [CONVENTIONS.md](CONVENTIONS.md) so all AI systems
-use the same source of truth.
+## Shared Context
 
-## Package-Specific Guidance
+Copilot MUST also read and follow [CLAUDE.md](../CLAUDE.md) before suggesting or making changes.
 
-_TODO_ Describe what this package does, key design decisions, invariants to preserve, and any Copilot-specific hints
-for working in this codebase.
+## Copilot-specific Instructions
+
+Place here any instructions specific to Copilot that are not already covered in the shared conventions or context above.
