@@ -6,29 +6,50 @@ namespace vm2.Functional;
 /// <summary>
 /// Represents an error with a code and a message.
 /// </summary>
-/// <param name="Code"></param>
-/// <param name="Message"></param>
-public record Error(string Code, string Message)
+/// <param name="Code">A string representing the error code.</param>
+/// <param name="Message">Detailed message describing the error.</param>
+public abstract record Error(string Code, string Message);
+
+/// <summary>
+/// Represents the error to not initialize a type if its default state is forbidden, e.g. for <see cref="Result{T}"/> -- <c>default(Result&lt;T&gt;)</c>.
+/// </summary>
+public sealed record DefaultError() : Error("default", "default(Result<T>) is not allowed.")
 {
     /// <summary>
-    /// Static instance of the Error class representing no error.
+    /// Gets the singleton instance of the DefaultError class.
     /// </summary>
-    public static readonly Error None = new("", "");
-
-    /// <summary>
-    /// Creates a new Error instance representing a validation error with the specified error messages.
-    /// </summary>
-    /// <param name="errors">
-    /// The collection of error messages that caused the validation error. This parameter must not be null.
-    /// </param>
-    /// <returns>
-    /// An Error instance representing the validation error.
-    /// </returns>
-    public static Error Validation(IEnumerable<Error> errors) => new AggregateError(errors);
+    public static DefaultError Instance { get; } = new();
 }
 
 /// <summary>
 /// Represents an aggregate error that contains multiple error messages.
 /// </summary>
-/// <param name="Errors"></param>
-public sealed record AggregateError(IEnumerable<Error> Errors) : Error("aggregate", string.Join("\n", Errors.Select(e => e.Message)));
+public sealed record AggregateError : Error
+{
+    /// <summary>
+    /// Initializes a new instance of the <c>AggregateError</c> class with the specified collection of errors. The error
+    /// messages from the collection are concatenated into a single message for the base Error class.
+    /// </summary>
+    /// <param name="errors">
+    /// The collection of <see cref="Error"/> objects that are aggregated into this aggregate error. This parameter must not be
+    /// null or empty.
+    /// </param>
+    public AggregateError(params IEnumerable<Error> errors) : base("aggregate", InitFromErrors(errors, out var immutableErrors))
+        => Errors = immutableErrors;
+
+    /// <summary>
+    /// Gets the collection of error messages that are aggregated into this aggregate error.
+    /// </summary>
+    public IEnumerable<Error> Errors { get; init; }
+
+    static string InitFromErrors(IEnumerable<Error> errors, out ImmutableList<Error> immutableErrors)
+    {
+        ArgumentNullException.ThrowIfNull(errors);
+
+        immutableErrors = errors.ToImmutableList();
+        if (!immutableErrors.Any())
+            throw new ArgumentException("The input collection of errors must not be empty.", nameof(errors));
+
+        return string.Join("\n", immutableErrors.Select(e => e.Message));
+    }
+}

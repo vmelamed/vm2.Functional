@@ -1,7 +1,7 @@
-# Comments marked with *TODO* are the customization points where you should adjust the text of this workflow template to the
-# needs of your concrete repo.
-name: Publish NuGet Pre-Release
+name: Publish Prerelease NuGet Packages
 
+# This workflow handles the publishing of NuGet pre-releases. It is triggered after the CI workflow completes successfully for
+# pushes to the main branch and can also be manually triggered via the workflow_dispatch event.
 on:
   workflow_run:
     branches:
@@ -26,20 +26,11 @@ on:
         type: string
 
 env:
-  # The value of the PACKAGE_PROJECTS variable must be a string containing a JSON array of strings - path(s) to the project(s).
-  # Hint: the yaml folding indicator `>-` lets you enter single line, scalar, string values on multiple lines, which might
-  # be more readable, and writable - no need for escaping.
-
-  # If not specified or empty, no projects will be packed for prerelease delivery.
-  # *TODO* The project(s) to pack for prerelease delivery. Must be a JSON array of strings containing path(s) to the packable project(s).
   PACKAGE_PROJECTS: >-
     [
     "src/Functional/Functional.csproj"
     ]
-  # Ensure the NUGET_API_KEY secret is issued by the server selected here.
-  # *TODO* 'github' - GitHub Packages; 'nuget' - NuGet.org; URI - others.
   NUGET_SERVER: ${{ vars.NUGET_SERVER || 'github' }}
-  # *TODO* Semicolon-separated preprocessor symbols to pass to the compiler.
   PREPROCESSOR_SYMBOLS: ""
   CONFIGURATION: ${{ vars.CONFIGURATION || 'Release' }} # The build configuration: Debug, Release, etc.
   DOTNET_VERSION: ${{ vars.DOTNET_VERSION || '10.0.x' }} # The .NET SDK version to use.
@@ -134,7 +125,7 @@ jobs:
     uses: vmelamed/vm2.DevOps/.github/workflows/_prerelease.yaml@main
     secrets:
       RELEASE_PAT: ${{ secrets.RELEASE_PAT }} # Required PAT for pushing changelog and tags past branch protection.
-      # *TODO* Make sure to set the API key issued by the selected NuGet server.
+      # Make sure to set the API key issued by the selected NuGet server.
       NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
     permissions:
       contents: write # Required to checkout the code, push changelog, and create tags
