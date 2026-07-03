@@ -69,7 +69,7 @@ env:
   #   ]
   PACKAGE_PROJECTS: >-
     [
-    "src/MyPackage/MyPackage.csproj"
+    "src/Functional/Functional.csproj"
     ]
   RUNNERS_OS: >-
     [
