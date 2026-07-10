@@ -7,8 +7,8 @@ namespace vm2.Functional;
 /// Represents an optional value. An instance of <see cref="Option{T}"/> can be in one of two states: it can either contain a
 /// value of type <typeparamref name="T"/> (the "some" case) or it can represent the absence of a value (the "none" case).
 /// </summary>
-/// <typeparam name="T">The type encapsulated by </typeparam>
-public readonly struct Option<T> : IEquatable<NoneType>, IEquatable<Option<T>>
+/// <typeparam name="T">The type encapsulated by the struct.</typeparam>
+public readonly struct Option<T> : IEquatable<NoneType>, IEquatable<Option<T>> where T : notnull
 {
     readonly T _value;
     readonly bool _isSome;
@@ -42,15 +42,9 @@ public readonly struct Option<T> : IEquatable<NoneType>, IEquatable<Option<T>>
     /// <returns>An instance of <see cref="Option{T}"/> representing the absence of a value.</returns>
     public static implicit operator Option<T>(NoneType _) => default;
 
-    /// Creates an instance of <see cref="Option{T}"/> representing the absence of a value.
-    /// <param name="_">The parameter is ignored. It is only used to distinguish this method from the implicit conversion
-    /// operator that creates an instance of <see cref="Option{T}"/> containing a value.
-    /// </param>
-    /// <returns>An instance of <see cref="Option{T}"/> representing the absence of a value.</returns>
-    public static implicit operator NoneType(Option<T> _) => None;
-
     /// <summary>
-    /// Maps the current <see cref="Option{T}"/> instance to a value of type <typeparamref name="R"/> using the specified mapping functions.
+    /// Maps the current <see cref="Option{T}"/> instance to a value of type <typeparamref name="R"/> using the specified
+    /// mapping functions.
     /// </summary>
     /// <typeparam name="R">
     /// The type of the value returned by the mapping functions. This type can be different from <typeparamref name="T"/>.
@@ -67,7 +61,9 @@ public readonly struct Option<T> : IEquatable<NoneType>, IEquatable<Option<T>>
     /// absence of a value).
     /// </returns>
     public R Match<R>(Func<T, R> onSome, Func<R> onNone)
-        => _isSome ? onSome(_value) : onNone();
+        => _isSome
+                ? onSome(_value)
+                : onNone();
 
     /// <summary>
     /// Determines whether the current <see cref="Option{T}"/> instance is equal to an instance of <see cref="NoneType"/>.
@@ -92,7 +88,9 @@ public readonly struct Option<T> : IEquatable<NoneType>, IEquatable<Option<T>>
     /// default equality comparer for type <typeparamref name="T"/>; otherwise, <see langword="false"/>.
     /// </returns>
     public bool Equals(Option<T> other)
-        => _isSome && other._isSome && EqualityComparer<T>.Default.Equals(_value, other._value);
+        => _isSome
+                ? other._isSome && EqualityComparer<T>.Default.Equals(_value, other._value)
+                : !other._isSome;
 
     /// <summary>
     /// Determines whether the current <see cref="Option{T}"/> instance is equal to an object.
@@ -103,7 +101,10 @@ public readonly struct Option<T> : IEquatable<NoneType>, IEquatable<Option<T>>
     /// <see langword="false"/>.
     /// </param>
     /// <returns></returns>
-    public override bool Equals(object? obj) => obj is NoneType none ? Equals(none) : obj is Option<T> option && Equals(option);
+    public override bool Equals(object? obj)
+        => obj is NoneType none
+            ? Equals(none)
+            : obj is Option<T> option && Equals(option);
 
     /// <summary>
     /// Returns a hash code for the current <see cref="Option{T}"/> instance. The hash code is computed based on the state of
@@ -114,5 +115,41 @@ public readonly struct Option<T> : IEquatable<NoneType>, IEquatable<Option<T>>
     /// A hash code for the current <see cref="Option{T}"/> instance.
     /// </returns>
     public override int GetHashCode()
-        => HashCode.Combine(typeof(Option<T>).GetHashCode(), _isSome ? _value?.GetHashCode() ?? 0 : 0);
+        => HashCode.Combine(
+                typeof(Option<T>).GetHashCode(),
+                _isSome
+                    ? _value?.GetHashCode() ?? 0
+                    : 0);
+
+    /// <summary>
+    /// Determines whether two <see cref="Option{T}"/> instances are equal. Two instances are considered equal if they are both
+    /// in the "some" state and their contained values are equal according to the default equality comparer for type
+    /// <typeparamref name="T"/> or if they are both in the "none" state.
+    /// </summary>
+    /// <param name="left">
+    /// The first <see cref="Option{T}"/> instance to compare.
+    /// </param>
+    /// <param name="right">
+    /// The second <see cref="Option{T}"/> instance to compare.
+    /// </param>
+    /// <returns>
+    /// <see langword="true"/> if the two <see cref="Option{T}"/> instances are equal; otherwise, <see langword="false"/>.
+    /// </returns>
+    public static bool operator ==(Option<T> left, Option<T> right) => left.Equals(right);
+
+    /// <summary>
+    /// Determines whether two <see cref="Option{T}"/> instances are not equal. Two instances are considered not equal if they
+    /// are in different states (one is in the "some" state and the other is in the "none" state) or if they are both in the
+    /// "some" state but their contained values are not equal.
+    /// </summary>
+    /// <param name="left">
+    /// The first <see cref="Option{T}"/> instance to compare.
+    /// </param>
+    /// <param name="right">
+    /// The second <see cref="Option{T}"/> instance to compare.
+    /// </param>
+    /// <returns>
+    /// <see langword="true"/> if the two <see cref="Option{T}"/> instances are not equal; otherwise, <see langword="false"/>.
+    /// </returns>
+    public static bool operator !=(Option<T> left, Option<T> right) => !(left == right);
 }
