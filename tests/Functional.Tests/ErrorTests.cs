@@ -19,9 +19,12 @@ public class ErrorTests(ITestOutputHelper outputHelper) : TestBase(outputHelper)
 
         aggregateError.Message.Should().Be("message1\nmessage2");
 
-        aggregateError.Errors.Should().BeOfType<ImmutableList<Error>>();
-        aggregateError.Errors.Should().HaveCount(2);
-        aggregateError.Errors.Should().Contain(error1);
-        aggregateError.Errors.Should().Contain(error2);
+        aggregateError
+            .Errors
+            .Should()
+            .BeOfType<ImmutableList<Error>>().And
+            .HaveCount(2).And
+            .Contain(error1).And
+            .Contain(error2);
     }
 }

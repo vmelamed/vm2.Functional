@@ -9,7 +9,6 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     static Option<int> Some(int value) => value; // exercises the implicit T -> Option<T> conversion
 
     #region Construction and conversion
-
     [Fact]
     public void ImplicitFromValue_WhenValueProvided_ShouldBeSome()
     {
@@ -42,18 +41,14 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void ImplicitFromValue_WhenStringValueIsNull_ShouldThrow()
     {
-        string? nullString = null;
-
         // The private ctor's null guard fires through the implicit conversion.
-        var act = () => { Option<string> _ = nullString!; };
+        var act = () => { Option<string> _ = null!; };
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("value");
     }
-
     #endregion
 
     #region Match
-
     [Fact]
     public void Match_WhenSome_ShouldInvokeOnSomeWithValue()
     {
@@ -73,11 +68,9 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
 
         result.Should().Be("none");
     }
-
     #endregion
 
     #region Map
-
     [Fact]
     public void Map_WhenSome_ShouldProjectValueAndStaySome()
     {
@@ -119,11 +112,9 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
 
         mapped.Match(s => s, () => "none").Should().Be("n:7");
     }
-
     #endregion
 
     #region Bind
-
     // Two option-returning helpers used to prove chaining stays flat and short-circuits on None.
     static Option<int> Halve(int n) => n % 2 == 0 ? n / 2 : None;
     static Option<string> Label(int n) => $"={n}";
@@ -182,11 +173,9 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
 
         result.Equals(None).Should().BeTrue();
     }
-
     #endregion
 
     #region Tap
-
     [Fact]
     public void Tap_WhenSome_ShouldRunOnSomeWithValueAndReturnSameOption()
     {
@@ -266,11 +255,9 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("onNone");
     }
-
     #endregion
 
     #region Filter
-
     [Fact]
     public void Filter_WhenSomeAndPredicateTrue_ShouldReturnSameOption()
     {
@@ -321,11 +308,9 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("predicate");
     }
-
     #endregion
 
     #region GetValueOr
-
     [Fact]
     public void GetValueOr_WhenSome_ShouldReturnContainedValue()
     {
@@ -351,11 +336,9 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("fallback");
     }
-
     #endregion
 
     #region ToOption — nullable value type
-
     [Fact]
     public void ToOption_WhenNullableValueTypeHasValue_ShouldBeSome()
     {
@@ -375,11 +358,9 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
 
         option.Equals(None).Should().BeTrue();
     }
-
     #endregion
 
     #region ToOption — nullable reference type
-
     [Fact]
     public void ToOption_WhenReferenceIsNonNull_ShouldBeSome()
     {
@@ -399,11 +380,9 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
 
         option.Equals(None).Should().BeTrue();
     }
-
     #endregion
 
     #region Equality — Option vs Option
-
     [Fact]
     public void Equals_WhenBothSomeWithEqualValues_ShouldBeTrue()
     {
@@ -435,11 +414,9 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
         some.Equals(none).Should().BeFalse();
         none.Equals(some).Should().BeFalse();
     }
-
     #endregion
 
     #region Equality — Option vs NoneType
-
     [Fact]
     public void EqualsNoneType_WhenNone_ShouldBeTrue()
     {
@@ -455,11 +432,9 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
 
         option.Equals(None).Should().BeFalse();
     }
-
     #endregion
 
     #region Equality — Equals(object)
-
     [Fact]
     public void EqualsObject_WhenComparedToEqualSomeOption_ShouldBeTrue()
     {
@@ -488,11 +463,9 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     {
         Some(1).Equals((object?)null).Should().BeFalse();
     }
-
     #endregion
 
     #region operator == / !=
-
     [Fact]
     public void OperatorEquals_WhenBothSomeEqual_ShouldBeTrue()
     {
@@ -519,13 +492,11 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
         (left == right).Should().BeTrue();
         (left != right).Should().BeFalse();
     }
-
     #endregion
 
     #region GetHashCode
-
     [Fact]
-    public void GetHashCode_WhenEqualSomes_ShouldMatch()
+    public void GetHashCode_WhenEqualSome_ShouldMatch()
     {
         Some(9).GetHashCode().Should().Be(Some(9).GetHashCode());
     }
@@ -538,11 +509,9 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
 
         left.GetHashCode().Should().Be(right.GetHashCode());
     }
-
     #endregion
 
     #region Reference types
-
     // A value-equal reference type (the common domain case).
     sealed record Person(string Name, int Age);
 
@@ -552,7 +521,6 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     {
         public int Value { get; } = value;
     }
-
     [Fact]
     public void ImplicitFromValue_WhenReferenceValueProvided_ShouldBeSome()
     {
@@ -619,6 +587,5 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
         left.Equals(right).Should().BeTrue();
         left.Equals(None).Should().BeTrue();
     }
-
     #endregion
 }
