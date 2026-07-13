@@ -92,6 +92,23 @@ public readonly struct Option<T> : IEquatable<NoneType>, IEquatable<Option<T>> w
     }
 
     /// <summary>
+    /// Chains an option-returning function: applies <paramref name="f"/> to the contained value and returns its
+    /// <see cref="Option{R}"/> result directly. Unlike <see cref="Map{R}"/>, the result is not re-wrapped, so chained
+    /// calls stay flat (no <c>Option&lt;Option&lt;...&gt;&gt;</c>).
+    /// </summary>
+    /// <typeparam name="R">The result value type. May differ from <typeparamref name="T"/>.</typeparam>
+    /// <param name="f">The option-returning function applied to the contained value when the option is "some".</param>
+    /// <returns><c>f(value)</c> when this is "some"; otherwise "none".</returns>
+    public Option<R> Bind<R>(Func<T, Option<R>> f) where R : notnull
+    {
+        ArgumentNullException.ThrowIfNull(f);
+
+        return _isSome
+                ? f(_value)
+                : default;
+    }
+
+    /// <summary>
     /// Executes <paramref name="onSome"/> for the contained value when the option is "some" or it does nothing when the option
     /// is "none".
     /// </summary>
@@ -137,23 +154,6 @@ public readonly struct Option<T> : IEquatable<NoneType>, IEquatable<Option<T>> w
         else
             onNone();
         return this;
-    }
-
-    /// <summary>
-    /// Chains an option-returning function: applies <paramref name="f"/> to the contained value and returns its
-    /// <see cref="Option{R}"/> result directly. Unlike <see cref="Map{R}"/>, the result is not re-wrapped, so chained
-    /// calls stay flat (no <c>Option&lt;Option&lt;...&gt;&gt;</c>).
-    /// </summary>
-    /// <typeparam name="R">The result value type. May differ from <typeparamref name="T"/>.</typeparam>
-    /// <param name="f">The option-returning function applied to the contained value when the option is "some".</param>
-    /// <returns><c>f(value)</c> when this is "some"; otherwise "none".</returns>
-    public Option<R> Bind<R>(Func<T, Option<R>> f) where R : notnull
-    {
-        ArgumentNullException.ThrowIfNull(f);
-
-        return _isSome
-                ? f(_value)
-                : default;
     }
 
     /// <summary>
