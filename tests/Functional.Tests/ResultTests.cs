@@ -440,11 +440,9 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("onFailure");
     }
-
     #endregion
 
     #region GetValueOr
-
     [Fact]
     public void GetValueOr_WhenSuccess_ShouldReturnTheValue()
     {
@@ -478,11 +476,9 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("fallback");
     }
-
     #endregion
 
     #region Pipelines — the railway end to end
-
     [Fact]
     public void Pipeline_WhenAllStepsSucceed_ShouldReachTheSuccessBranch()
     {
@@ -507,6 +503,128 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
 
         outcome.Should().Be("err:test.failed");
         mapInvoked.Should().BeFalse(); // everything downstream of the failure is skipped
+    }
+    #endregion
+
+    #region Reference types
+
+    // Every test above uses Result<int> — a value type, where the internal _value is a Nullable<int>.
+    // With a reference T the storage and the null-forgiving unwraps take a structurally different path,
+    // so the combinators are exercised again over references here.
+    sealed record Customer(string Name);
+
+    // NOTE: Result<Error> does not compile. Both implicit operators — Result<T>(T) and Result<T>(Error) —
+    // apply when T is Error, and the compiler reports CS0457 "Ambiguous user defined conversions".
+    // This is the safe failure mode (a compile error, not a silently wrong conversion), so Result<Error>
+    // is simply an unsupported instantiation rather than a latent trap.
+
+    [Fact]
+    public void Ok_WhenReferenceValue_ShouldBeSuccessAndCarryTheReference()
+    {
+        var customer = new Customer("Ada");
+
+        var result = Result<Customer>.Ok(customer);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeSameAs(customer);
+    }
+
+    [Fact]
+    public void Ok_WhenReferenceValueIsNull_ShouldThrow()
+    {
+        // The ctor guard is only provable with a reference type — an int cannot be null.
+        var act = () => Result<Customer>.Ok(null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("value");
+    }
+
+    [Fact]
+    public void Fail_WhenReferenceType_ShouldCarryTheErrorAndThrowOnValue()
+    {
+        var result = Result<Customer>.Fail(SomeError);
+
+        result.Error.Should().BeSameAs(SomeError);
+
+        var act = () => result.Value;
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Default_WhenReferenceType_ShouldBeFailureCarryingDefaultError()
+    {
+        // Here the defaulted _value is a null *reference*, not a Nullable<T> with HasValue == false.
+        var result = default(Result<Customer>);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().BeSameAs(DefaultError.Instance);
+    }
+
+    [Fact]
+    public void Map_WhenReferenceToReference_ShouldTransformTheValue()
+    {
+        var result = Result<Customer>.Ok(new Customer("Grace"));
+
+        Result<string> mapped = result.Map(c => c.Name);
+
+        mapped.Value.Should().Be("Grace");
+    }
+
+    [Fact]
+    public void Map_WhenReferenceTypeFailure_ShouldPreserveTheOriginalError()
+    {
+        var result = Result<Customer>.Fail(SomeError);
+
+        var mapped = result.Map(c => c.Name);
+
+        mapped.IsFailure.Should().BeTrue();
+        mapped.Error.Should().BeSameAs(SomeError);
+    }
+
+    [Fact]
+    public void Bind_WhenReferenceTypeChainShortCircuits_ShouldPropagateTheError()
+    {
+        static Result<Customer> RequireNamed(Customer c)
+            => string.IsNullOrWhiteSpace(c.Name) ? OtherError : c;
+
+        var result = Result<Customer>.Ok(new Customer(""));   // blank name -> RequireNamed fails
+
+        var bound = result.Bind(RequireNamed).Map(c => c.Name);
+
+        bound.IsFailure.Should().BeTrue();
+        bound.Error.Should().BeSameAs(OtherError);
+    }
+
+    [Fact]
+    public void Ensure_WhenReferenceTypeAndPredicateFalse_ShouldFailWithTheSuppliedError()
+    {
+        var result = Result<Customer>.Ok(new Customer(""));
+
+        var ensured = result.Ensure(c => c.Name.Length > 0, SomeError);
+
+        ensured.IsFailure.Should().BeTrue();
+        ensured.Error.Should().BeSameAs(SomeError);
+    }
+
+    [Fact]
+    public void Tap_WhenReferenceType_ShouldReceiveTheReferenceAndTheError()
+    {
+        Customer? seenValue = null;
+        Error? seenError = null;
+
+        Result<Customer>.Ok(new Customer("Ada")).Tap(c => seenValue = c, e => seenError = e);
+        Result<Customer>.Fail(SomeError).Tap(c => seenValue = c, e => seenError = e);
+
+        seenValue!.Name.Should().Be("Ada");
+        seenError.Should().BeSameAs(SomeError);
+    }
+
+    [Fact]
+    public void GetValueOr_WhenReferenceTypeFailure_ShouldReturnTheFallbackReference()
+    {
+        var fallback = new Customer("fallback");
+        var result = Result<Customer>.Fail(SomeError);
+
+        result.GetValueOr(fallback).Should().BeSameAs(fallback);
     }
 
     #endregion

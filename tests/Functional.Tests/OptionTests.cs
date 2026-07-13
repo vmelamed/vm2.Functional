@@ -588,4 +588,76 @@ public class OptionTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
         left.Equals(None).Should().BeTrue();
     }
     #endregion
+
+    #region Reference types — combinators
+
+    // The combinator tests above all use Option<int>. With a reference T the storage and the unwraps take a
+    // structurally different path, so Map/Bind/Filter/Tap/GetValueOr are exercised again over references here.
+
+    [Fact]
+    public void Map_WhenSomeReference_ShouldProjectAndStaySome()
+    {
+        Option<Person> option = new Person("Ada", 36);
+
+        Option<string> mapped = option.Map(p => p.Name);
+
+        mapped.Match(s => s, () => "none").Should().Be("Ada");
+    }
+
+    [Fact]
+    public void Map_WhenNoneReference_ShouldStayNoneAndNotInvokeProjection()
+    {
+        var invoked = false;
+        Option<Person> option = None;
+
+        var mapped = option.Map(p => { invoked = true; return p.Name; });
+
+        mapped.Equals(None).Should().BeTrue();
+        invoked.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Bind_WhenReferenceChainShortCircuits_ShouldPropagateNone()
+    {
+        // A named person binds to their name; an unnamed one binds to None.
+        static Option<string> NameOf(Person p) => string.IsNullOrWhiteSpace(p.Name) ? None : p.Name;
+
+        Option<Person> named = new Person("Grace", 45);
+        Option<Person> unnamed = new Person("", 0);
+
+        named.Bind(NameOf).Match(s => s, () => "none").Should().Be("Grace");
+        unnamed.Bind(NameOf).Equals(None).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Filter_WhenSomeReference_ShouldDemoteToNoneWhenPredicateFails()
+    {
+        Option<Person> option = new Person("Ada", 36);
+
+        option.Filter(p => p.Age >= 18).Should().Be(option);          // passes -> unchanged
+        option.Filter(p => p.Age >= 65).Equals(None).Should().BeTrue(); // fails  -> none
+    }
+
+    [Fact]
+    public void Tap_WhenSomeReference_ShouldReceiveTheReference()
+    {
+        Person? seen = null;
+        Option<Person> option = new Person("Ada", 36);
+
+        var returned = option.Tap(p => seen = p);
+
+        seen!.Name.Should().Be("Ada");
+        returned.Should().Be(option);
+    }
+
+    [Fact]
+    public void GetValueOr_WhenNoneReference_ShouldReturnTheFallbackReference()
+    {
+        var fallback = new Person("fallback", 0);
+        Option<Person> option = None;
+
+        option.GetValueOr(fallback).Should().BeSameAs(fallback);
+    }
+
+    #endregion
 }
