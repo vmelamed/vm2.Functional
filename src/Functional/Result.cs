@@ -5,11 +5,19 @@ namespace vm2.Functional;
 
 /// <summary>
 /// Represents a result of an operation that can either be a success or a failure, and carries a value of the result of type T
-/// in case of success. Note that <typeparamref name="T"/> must be a non-nullable type, i.e. void must be represented by
-/// <see cref="Unit"/> and <see cref="string"/>? is not allowed. Functional means no <see langword="null"/>-s.
+/// in case of success.
+/// <para/>
+/// Note that <typeparamref name="T"/> must be a non-nullable type, i.e. void must be represented by <see cref="Unit"/> and
+/// <see cref="string"/>? is not allowed. Functional means no <see langword="null"/>-s.
+/// <para/>
+/// Also note that <see cref="Error"/> is not allowed either: when <typeparamref name="T"/> is <see cref="Error"/> both implicit
+/// cast operators — <see cref="Result{T}(T)"/> and <see cref="Result{T}(Error)"/> apply, and the compiler reports <b>CS0457
+/// "Ambiguous user defined conversions"</b>. This is the safe failure mode (a compile error, not a silently wrong conversion), so
+/// Result&lt;Error&gt; is simply an unsupported instantiation rather than a latent trap.
 /// </summary>
 /// <typeparam name="T">
-/// The type of the value carried by the Result in case of a successful operation.
+/// The type of the value carried by the Result in case of a successful operation. MUST NOT be <see cref="Error"/> - see the
+/// remarks below.
 /// </typeparam>
 public readonly record struct Result<T> where T : notnull
 {
