@@ -16,7 +16,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Ok_ShouldBeSuccessAndCarryTheValue()
     {
-        var result = Result<int>.Ok(42);
+        var result = Ok<int>(42);
 
         result.IsSuccess.Should().BeTrue();
         result.IsFailure.Should().BeFalse();
@@ -26,7 +26,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Fail_ShouldBeFailureAndCarryTheError()
     {
-        var result = Result<int>.Fail(SomeError);
+        var result = Fail<int>(SomeError);
 
         result.IsFailure.Should().BeTrue();
         result.IsSuccess.Should().BeFalse();
@@ -54,7 +54,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Value_WhenFailure_ShouldThrow()
     {
-        var result = Result<int>.Fail(SomeError);
+        var result = Fail<int>(SomeError);
 
         var act = () => result.Value;
 
@@ -64,7 +64,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Error_WhenSuccess_ShouldThrow()
     {
-        var result = Result<int>.Ok(42);
+        var result = Ok<int>(42);
 
         var act = () => result.Error;
 
@@ -100,7 +100,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Match_WhenSuccess_ShouldInvokeOnSuccessWithTheValue()
     {
-        var result = Result<int>.Ok(7);
+        var result = Ok<int>(7);
 
         var matched = result.Match(onSuccess: v => $"ok:{v}", onFailure: e => $"err:{e.Code}");
 
@@ -110,7 +110,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Match_WhenFailure_ShouldInvokeOnFailureWithTheError()
     {
-        var result = Result<int>.Fail(SomeError);
+        var result = Fail<int>(SomeError);
 
         // onFailure receives the Error — failure carries information, and Match is where it is consumed.
         var matched = result.Match(onSuccess: v => $"ok:{v}", onFailure: e => $"err:{e.Code}");
@@ -131,7 +131,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Match_WhenOnSuccessIsNull_ShouldThrow()
     {
-        var result = Result<int>.Ok(1);
+        var result = Ok<int>(1);
 
         var act = () => result.Match(null!, e => 0);
 
@@ -141,7 +141,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Match_WhenOnFailureIsNull_ShouldThrow()
     {
-        var result = Result<int>.Ok(1);
+        var result = Ok<int>(1);
 
         var act = () => result.Match(v => 0, null!);
 
@@ -153,7 +153,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Map_WhenSuccess_ShouldTransformTheValue()
     {
-        var result = Result<int>.Ok(5);
+        var result = Ok<int>(5);
 
         var mapped = result.Map(v => v * 2);
 
@@ -164,7 +164,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Map_WhenSuccess_ShouldChangeTheResultType()
     {
-        var result = Result<int>.Ok(5);
+        var result = Ok<int>(5);
 
         Result<string> mapped = result.Map(v => $"n:{v}");
 
@@ -176,7 +176,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     {
         // THE defining property of the railway: Map transforms the success track and passes the failure
         // track through *with its specific Error intact* — it must NOT launder it into DefaultError.
-        var result = Result<int>.Fail(SomeError);
+        var result = Fail<int>(SomeError);
 
         var mapped = result.Map(v => v * 2);
 
@@ -188,7 +188,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     public void Map_WhenFailure_ShouldNotInvokeTheProjection()
     {
         var invoked = false;
-        var result = Result<int>.Fail(SomeError);
+        var result = Fail<int>(SomeError);
 
         _ = result.Map(v => { invoked = true; return v * 2; });
 
@@ -198,11 +198,11 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Map_WhenProjectionIsNull_ShouldThrow()
     {
-        var result = Result<int>.Ok(1);
+        var result = Ok<int>(1);
 
         var act = () => result.Map<int>(null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("f");
+        act.Should().Throw<ArgumentNullException>().WithParameterName("selector");
     }
     #endregion
 
@@ -214,7 +214,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Bind_WhenSuccess_ShouldApplyFunctionAndStayFlat()
     {
-        var result = Result<int>.Ok(8);
+        var result = Ok<int>(8);
 
         // The result is Result<int>, NOT Result<Result<int>> — Bind does not re-wrap.
         Result<int> bound = result.Bind(Halve);
@@ -225,7 +225,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Bind_WhenSuccessButFunctionFails_ShouldCarryTheNewError()
     {
-        var result = Result<int>.Ok(7); // odd -> Halve fails with OtherError
+        var result = Ok<int>(7); // odd -> Halve fails with OtherError
 
         var bound = result.Bind(Halve);
 
@@ -237,7 +237,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     public void Bind_WhenFailure_ShouldPreserveTheOriginalErrorAndNotInvokeFunction()
     {
         var invoked = false;
-        var result = Result<int>.Fail(SomeError);
+        var result = Fail<int>(SomeError);
 
         var bound = result.Bind(v => { invoked = true; return Halve(v); });
 
@@ -249,7 +249,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Bind_WhenChained_ShouldThreadThroughAllSteps()
     {
-        var result = Result<int>.Ok(8);
+        var result = Ok<int>(8);
 
         // 8 -> 4 -> 2 -> "=2"; every step stays single-level.
         var bound = result.Bind(Halve).Bind(Halve).Bind(Label);
@@ -260,7 +260,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Bind_WhenChainShortCircuits_ShouldPropagateTheFirstError()
     {
-        var result = Result<int>.Ok(8);
+        var result = Ok<int>(8);
 
         // 8 -> 4 -> 2 -> 1, then Halve(1) fails (odd) -> Label never runs, and OtherError rides to the end.
         var bound = result.Bind(Halve).Bind(Halve).Bind(Halve).Bind(Halve).Bind(Label);
@@ -272,11 +272,11 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Bind_WhenFunctionIsNull_ShouldThrow()
     {
-        var result = Result<int>.Ok(1);
+        var result = Ok<int>(1);
 
         var act = () => result.Bind<int>(null!);
 
-        act.Should().Throw<ArgumentNullException>().WithParameterName("f");
+        act.Should().Throw<ArgumentNullException>().WithParameterName("selector");
     }
     #endregion
 
@@ -284,7 +284,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Ensure_WhenSuccessAndPredicateTrue_ShouldReturnTheOriginalResult()
     {
-        var result = Result<int>.Ok(6);
+        var result = Ok<int>(6);
 
         var ensured = result.Ensure(v => v % 2 == 0, SomeError);
 
@@ -297,7 +297,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     {
         // Unlike Option.Filter (which demotes to a None carrying no information), Ensure must be *told*
         // which Error to fail with — a failure needs a reason.
-        var result = Result<int>.Ok(7);
+        var result = Ok<int>(7);
 
         var ensured = result.Ensure(v => v % 2 == 0, SomeError);
 
@@ -308,7 +308,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Ensure_WhenAlreadyFailed_ShouldPreserveTheOriginalError()
     {
-        var result = Result<int>.Fail(SomeError);
+        var result = Fail<int>(SomeError);
 
         // The guard's own error (OtherError) must NOT replace the error already on the rail.
         var ensured = result.Ensure(v => true, OtherError);
@@ -321,7 +321,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     public void Ensure_WhenAlreadyFailed_ShouldNotInvokeThePredicate()
     {
         var invoked = false;
-        var result = Result<int>.Fail(SomeError);
+        var result = Fail<int>(SomeError);
 
         _ = result.Ensure(v => { invoked = true; return true; }, OtherError);
 
@@ -331,7 +331,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Ensure_WhenPredicateIsNull_ShouldThrow()
     {
-        var result = Result<int>.Ok(1);
+        var result = Ok<int>(1);
 
         var act = () => result.Ensure(null!, SomeError);
 
@@ -341,7 +341,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Ensure_WhenErrorIsNull_ShouldThrow()
     {
-        var result = Result<int>.Ok(1);
+        var result = Ok<int>(1);
 
         var act = () => result.Ensure(v => true, null!);
 
@@ -354,7 +354,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     public void Tap_WhenSuccess_ShouldRunOnSuccessWithValueAndReturnSameResult()
     {
         var seen = 0;
-        var result = Result<int>.Ok(5);
+        var result = Ok<int>(5);
 
         var returned = result.Tap(v => seen = v);
 
@@ -366,7 +366,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     public void Tap_WhenFailure_ShouldNotRunOnSuccessAndReturnSameResult()
     {
         var ran = false;
-        var result = Result<int>.Fail(SomeError);
+        var result = Fail<int>(SomeError);
 
         var returned = result.Tap(_ => ran = true);
 
@@ -379,7 +379,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     {
         var successRan = false;
         var failureRan = false;
-        var result = Result<int>.Ok(5);
+        var result = Ok<int>(5);
 
         result.Tap(onSuccess: _ => successRan = true, onFailure: _ => failureRan = true);
 
@@ -391,7 +391,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     public void Tap_WhenFailure_ShouldRunOnFailureWithTheError()
     {
         Error? seen = null;
-        var result = Result<int>.Fail(SomeError);
+        var result = Fail<int>(SomeError);
 
         // The failure arm receives the Error — this is what makes Tap useful for diagnostics
         // ("log *why* it failed"), and is the asymmetry with Option.Tap's parameterless none arm.
@@ -414,7 +414,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Tap_WhenChained_ShouldReturnSameResultAtEachStep()
     {
-        var result = Result<int>.Ok(5);
+        var result = Ok<int>(5);
 
         var returned = result.Tap(_ => { }).Tap(_ => { });
 
@@ -424,7 +424,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Tap_WhenOnSuccessIsNull_ShouldThrow()
     {
-        var result = Result<int>.Ok(1);
+        var result = Ok<int>(1);
 
         var act = () => result.Tap(null!);
 
@@ -434,7 +434,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Tap_WhenOnFailureIsNull_ShouldThrow()
     {
-        var result = Result<int>.Ok(1);
+        var result = Ok<int>(1);
 
         var act = () => result.Tap(_ => { }, null!);
 
@@ -446,7 +446,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void GetValueOr_WhenSuccess_ShouldReturnTheValue()
     {
-        var result = Result<int>.Ok(5);
+        var result = Ok<int>(5);
 
         result.GetValueOr(99).Should().Be(5);
     }
@@ -454,7 +454,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void GetValueOr_WhenFailure_ShouldReturnTheFallback()
     {
-        var result = Result<int>.Fail(SomeError);
+        var result = Fail<int>(SomeError);
 
         result.GetValueOr(99).Should().Be(99);
     }
@@ -470,7 +470,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void GetValueOr_WhenFallbackIsNull_ShouldThrow()
     {
-        var result = Result<string>.Fail(SomeError);
+        var result = Fail<string>(SomeError);
 
         var act = () => result.GetValueOr(null!);
 
@@ -482,7 +482,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Pipeline_WhenAllStepsSucceed_ShouldReachTheSuccessBranch()
     {
-        var outcome = Result<int>.Ok(8)
+        var outcome = Ok<int>(8)
                                  .Ensure(v => v > 0, SomeError)
                                  .Map(v => v * 2)
                                  .Bind(Halve)
@@ -496,7 +496,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     {
         var mapInvoked = false;
 
-        var outcome = Result<int>.Ok(-1)
+        var outcome = Ok<int>(-1)
                                  .Ensure(v => v > 0, SomeError)          // fails here
                                  .Map(v => { mapInvoked = true; return v * 2; })
                                  .Match(onSuccess: v => $"ok:{v}", onFailure: e => $"err:{e.Code}");
@@ -523,7 +523,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     {
         var customer = new Customer("Ada");
 
-        var result = Result<Customer>.Ok(customer);
+        var result = Ok<Customer>(customer);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeSameAs(customer);
@@ -533,7 +533,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     public void Ok_WhenReferenceValueIsNull_ShouldThrow()
     {
         // The ctor guard is only provable with a reference type — an int cannot be null.
-        var act = () => Result<Customer>.Ok(null!);
+        var act = () => Ok<Customer>(null!);
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("value");
     }
@@ -541,7 +541,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Fail_WhenReferenceType_ShouldCarryTheErrorAndThrowOnValue()
     {
-        var result = Result<Customer>.Fail(SomeError);
+        var result = Fail<Customer>(SomeError);
 
         result.Error.Should().BeSameAs(SomeError);
 
@@ -562,7 +562,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Map_WhenReferenceToReference_ShouldTransformTheValue()
     {
-        var result = Result<Customer>.Ok(new Customer("Grace"));
+        var result = Ok<Customer>(new Customer("Grace"));
 
         Result<string> mapped = result.Map(c => c.Name);
 
@@ -572,7 +572,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Map_WhenReferenceTypeFailure_ShouldPreserveTheOriginalError()
     {
-        var result = Result<Customer>.Fail(SomeError);
+        var result = Fail<Customer>(SomeError);
 
         var mapped = result.Map(c => c.Name);
 
@@ -586,7 +586,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
         static Result<Customer> RequireNamed(Customer c)
             => string.IsNullOrWhiteSpace(c.Name) ? OtherError : c;
 
-        var result = Result<Customer>.Ok(new Customer(""));   // blank name -> RequireNamed fails
+        var result = Ok<Customer>(new Customer(""));   // blank name -> RequireNamed fails
 
         var bound = result.Bind(RequireNamed).Map(c => c.Name);
 
@@ -597,7 +597,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     [Fact]
     public void Ensure_WhenReferenceTypeAndPredicateFalse_ShouldFailWithTheSuppliedError()
     {
-        var result = Result<Customer>.Ok(new Customer(""));
+        var result = Ok<Customer>(new Customer(""));
 
         var ensured = result.Ensure(c => c.Name.Length > 0, SomeError);
 
@@ -611,8 +611,8 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
         Customer? seenValue = null;
         Error? seenError = null;
 
-        Result<Customer>.Ok(new Customer("Ada")).Tap(c => seenValue = c, e => seenError = e);
-        Result<Customer>.Fail(SomeError).Tap(c => seenValue = c, e => seenError = e);
+        Ok<Customer>(new Customer("Ada")).Tap(c => seenValue = c, e => seenError = e);
+        Fail<Customer>(SomeError).Tap(c => seenValue = c, e => seenError = e);
 
         seenValue!.Name.Should().Be("Ada");
         seenError.Should().BeSameAs(SomeError);
@@ -622,7 +622,7 @@ public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper
     public void GetValueOr_WhenReferenceTypeFailure_ShouldReturnTheFallbackReference()
     {
         var fallback = new Customer("fallback");
-        var result = Result<Customer>.Fail(SomeError);
+        var result = Fail<Customer>(SomeError);
 
         result.GetValueOr(fallback).Should().BeSameAs(fallback);
     }

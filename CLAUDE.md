@@ -55,14 +55,23 @@ Key design decisions:
   leaves. A now-deleted `Extensions.ToFunc(Action) -> Func<…,Unit>` helper (Buonanno-style, arities 0–16) was removed
   as YAGNI — it only earns its place under a `Func`-uniform design, which was not chosen. It may return if a real
   `Func<…,Unit>` call site ever appears.
-- **`Tap` returns `this`, not `void`** (Buonanno's `ForEach` returns `void`) so side effects chain. The none-side
-  effect is exposed via an **optional `Action? onNone = null`** second arm (`Tap(onSome, onNone)`) — the side-effect
-  analogue of `Match` — for diagnostics that must log presence *and* absence. `null` means "ignore the none case".
-  Extra inputs to a side effect ride in via **closure capture**, never via arity overloads.
+- **`Tap` returns `this`, not `void`** (Buonanno's `ForEach` returns `void`) so side effects chain. The two-branch
+  form is **two overloads**, not one method with a defaulted arm — `Tap(onSome)` and `Tap(onSome, onNone)` — so no
+  `null` (which would be a foreign concept in a null-abolishing library) leaks into the signature. Each overload is a
+  total function. Extra inputs to a side effect ride in via **closure capture**, never via arity overloads.
 - **Compose, don't impersonate.** `Option`/`Result` are monads, **not** collections — they do not implement
   `IEnumerable<T>`. LINQ query syntax, if wanted, comes from `Select`/`SelectMany`/`Where` **methods**, never from a
   false `is-a`. (Buonanno bunches `Option` and `IEnumerable` into `C<T>` for *pedagogy*; that is a shared *abstraction*,
   not a mandate to share an *interface*.)
+- **Construction verbs are `Some`/`None` and `Ok`/`Fail` — considered and kept over `Return`/`Pure`.** `Return`
+  (FP's "lift a value into the monad", = our `Some`/`Ok`) was weighed and **rejected** for the public surface:
+  (1) it **collides with the C# `return` keyword**, so `Return(5)` misreads as "returns 5" to a C#-first audience;
+  (2) `Some`/`None` and `Ok`/`Fail` are **symmetric paired** state-names (each names its case) — `Return` breaks the
+  pair, leaving no counterpart for `None`; (3) even in FP, `return` is a regretted name (Haskell moved to `pure`).
+  `Return`/`Pure` are used only as *documentation aliases* (see `docs/fp-essentials.md`) and may appear as a
+  test-local `Return = Some` helper in the monad-law tests — never as a member on the shipped type. This is the
+  "keep the FP concept, don't multiply the surface" rule (cf. `Select`↔`Map`): the concept lives in the docs and the
+  law-tests, not as a third construction path that would break the "one obvious way to construct" invariant.
 
 ## Common Local Commands
 
