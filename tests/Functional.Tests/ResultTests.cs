@@ -3,12 +3,8 @@
 
 namespace vm2.Functional.Tests;
 
-public class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper)
+public partial class ResultTests(ITestOutputHelper outputHelper) : TestBase(outputHelper)
 {
-    // A concrete Error for the fixtures — Error itself is abstract, and callers are expected to
-    // discriminate by type, not by string-sniffing Code.
-    sealed record TestError(string Code, string Message) : Error(Code, Message);
-
     static readonly TestError SomeError = new("test.failed", "the operation failed");
     static readonly TestError OtherError = new("test.other", "a different failure");
 

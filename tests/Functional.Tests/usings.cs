@@ -3,3 +3,5 @@
 
 global using static vm2.Functional.Option;
 global using static vm2.Functional.Result;
+
+global using static vm2.Functional.Tests.FunctionalAliases;
