@@ -5,8 +5,6 @@ namespace vm2.Functional.Tests;
 
 public class ErrorTests(ITestOutputHelper outputHelper) : TestBase(outputHelper)
 {
-    sealed record TestError(string Type, string Message) : Error(Type, Message);
-
     [Fact]
     public void AggregateError_ShouldContainAllErrors()
     {

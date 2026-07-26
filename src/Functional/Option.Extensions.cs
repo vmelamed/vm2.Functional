@@ -26,7 +26,7 @@ public static class Option
     ///     Option&lt;int&gt; answer2 = 42;                     // implicitly invokes the operator Option&lt;int&gt;
     /// </code></example>
     public static Option<T> Some<T>(T value) where T : notnull
-        => value;   // impl.conversion to Option<T>
+        => value;   // implicit conversion to Option<T>
 
     /// <summary>
     /// Creates an instance of <see cref="Option{T}"/> representing the absence of a value.
@@ -38,7 +38,7 @@ public static class Option
     ///     Option&lt;int&gt; noneValue3 = default;             // directly assigns the default Option&lt;int&gt; value, representing "none"
     /// </code></example>
     public static NoneType None
-        => default; // impl.conversion of NoneType to Option<T>
+        => default; // implicit conversion of NoneType to Option<T>
 
     /// <summary>Extension methods for converting nullable value types to <see cref="Option{T}"/>.</summary>
     /// <typeparam name="T">The underlying value type of the nullable value to be converted.</typeparam>
