@@ -40,7 +40,7 @@ public static class Result
     /// </summary>
     /// <returns><see cref="Result{Unit}"/> instance representing a successful outcome with no value.</returns>
     public static Result<Unit> Ok()
-        => default;   // impl.conversion of Unit to Result<Unit>
+        => Unit.Instance;   // impl.conversion of Unit to Result<Unit>
 
     /// <summary>
     /// Creates <see cref="Result{Unit}"/> instances representing a failed outcome with the specified error.
