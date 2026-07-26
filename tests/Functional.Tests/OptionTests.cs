@@ -170,6 +170,27 @@ public partial class OptionTests(ITestOutputHelper outputHelper) : TestBase(outp
 
         result.Equals(None).Should().BeTrue();
     }
+
+    [Fact]
+    public void Bind_WhenSome_InvokesFunctionOnceWithUnwrappedValue()
+    {
+        var f = Substitute.For<Func<int, Option<int>>>();
+        f.Invoke(Arg.Any<int>()).Returns(ci => Some(ci.Arg<int>() * 2));
+
+        Some(21).Bind(f).Should().Be(Some(42));
+        f.Received(1).Invoke(21);
+    }
+
+    [Fact]
+    public void Bind_WhenNone_DoesNotInvokeFunctionWithUnwrappedValue()
+    {
+        var f = Substitute.For<Func<int, Option<int>>>();
+        f.Invoke(Arg.Any<int>()).Returns(ci => Some(ci.Arg<int>() * 2));
+        Option<int> option = None;
+
+        option.Bind(f).Should().Be(None);
+        f.Received(0).Invoke(21);
+    }
     #endregion
 
     #region Tap

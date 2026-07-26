@@ -274,6 +274,27 @@ public partial class ResultTests(ITestOutputHelper outputHelper) : TestBase(outp
 
         act.Should().Throw<ArgumentNullException>().WithParameterName("selector");
     }
+
+    [Fact]
+    public void Bind_WhenSuccess_InvokesFunctionOnceWithUnwrappedValue()
+    {
+        var f = Substitute.For<Func<int, Result<int>>>();
+        f.Invoke(Arg.Any<int>()).Returns(ci => Right(ci.Arg<int>() * 2));
+
+        Right(21).Bind(f).Should().Be(Right(42));
+        f.Received(1).Invoke(21);
+    }
+
+    [Fact]
+    public void Bind_WhenFailure_DoesNotInvokeFunctionWithUnwrappedValue()
+    {
+        var f = Substitute.For<Func<int, Result<int>>>();
+        f.Invoke(Arg.Any<int>()).Returns(ci => Ok(ci.Arg<int>() * 2));
+        Result<int> result = Fail<int>(SomeError);
+
+        result.Bind(f).Should().Be(result);
+        f.Received(0).Invoke(21);
+    }
     #endregion
 
     #region Ensure
