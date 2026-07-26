@@ -25,4 +25,27 @@ public class ErrorTests(ITestOutputHelper outputHelper) : TestBase(outputHelper)
             .Contain(error1).And
             .Contain(error2);
     }
+
+    [Fact]
+    public void AggregateError_WhenErrorsIsNull_ShouldThrowArgumentNull()
+    {
+        var act = () => new AggregateError((IEnumerable<Error>)null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("errors");
+    }
+
+    [Fact]
+    public void AggregateError_WhenErrorsIsEmpty_ShouldThrowArgument()
+    {
+        var act = () => new AggregateError([]);
+
+        act.Should().Throw<ArgumentException>().WithParameterName("errors");
+    }
+
+    [Fact]
+    public void DefaultError_Instance_ShouldBeSingleton()
+    {
+        DefaultError.Instance.Should().BeSameAs(DefaultError.Instance);
+        DefaultError.Instance.Code.Should().Be("default");
+    }
 }
