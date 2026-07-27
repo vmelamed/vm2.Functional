@@ -44,7 +44,7 @@ public readonly struct Result<T> : IEquatable<Result<T>> where T : notnull
     /// <summary>
     /// The error associated with a failed <see cref="Result{T}"/>. If the <see cref="Result{T}"/> represents a success, this
     /// field is intentionally <see langword="null"/> and it is not used. If the <see cref="Result{T}"/> represents a failure
-    /// and the error is not set, and it will be replaced by <see cref="DefaultError.Instance"/> on the fly -
+    /// and the error is not set, and it will be replaced by <see cref="DefaultResultError.Instance"/> on the fly -
     /// <see cref="Functional.Error"/>.
     /// </summary>
     readonly Error? _error;
@@ -92,7 +92,7 @@ public readonly struct Result<T> : IEquatable<Result<T>> where T : notnull
     /// Thrown when attempting to access the Error property of a successful <see cref="Result{T}"/>.
     /// </exception>
     public Error Error => !_isSuccess
-                                ? _error ?? DefaultError.Instance
+                                ? _error ?? DefaultResultError.Instance
                                 : throw new InvalidOperationException("Result is a success; it has no Error.");
     #endregion
 
@@ -187,7 +187,7 @@ public readonly struct Result<T> : IEquatable<Result<T>> where T : notnull
 
         return IsSuccess
                     ? onSuccess(_value!)
-                    : onFailure(_error ?? DefaultError.Instance);
+                    : onFailure(_error ?? DefaultResultError.Instance);
     }
 
     /// <summary>
@@ -220,7 +220,7 @@ public readonly struct Result<T> : IEquatable<Result<T>> where T : notnull
 
         return _isSuccess
                     ? new Result<R>(selector(_value!))
-                    : new Result<R>(_error ?? DefaultError.Instance);
+                    : new Result<R>(_error ?? DefaultResultError.Instance);
     }
 
     /// <summary>
@@ -257,7 +257,7 @@ public readonly struct Result<T> : IEquatable<Result<T>> where T : notnull
 
         return _isSuccess
                     ? selector(_value!)
-                    : new Result<R>(_error ?? DefaultError.Instance);
+                    : new Result<R>(_error ?? DefaultResultError.Instance);
     }
 
     /// <summary>
@@ -337,7 +337,7 @@ public readonly struct Result<T> : IEquatable<Result<T>> where T : notnull
         if (_isSuccess)
             onSuccess(_value!);
         else
-            onFailure(_error ?? DefaultError.Instance);
+            onFailure(_error ?? DefaultResultError.Instance);
         return this;
     }
 
@@ -381,7 +381,7 @@ public readonly struct Result<T> : IEquatable<Result<T>> where T : notnull
                 _isSuccess.GetHashCode(),
                 _isSuccess
                     ? (_value?.GetHashCode() ?? 0)
-                    : (_error?.GetHashCode() ?? DefaultError.Instance.GetHashCode()));
+                    : (_error?.GetHashCode() ?? DefaultResultError.Instance.GetHashCode()));
 
     /// <inheritdoc />
     public static bool operator ==(Result<T> left, Result<T> right) => left.Equals(right);

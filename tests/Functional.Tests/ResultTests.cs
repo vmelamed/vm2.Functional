@@ -78,7 +78,7 @@ public partial class ResultTests(ITestOutputHelper outputHelper) : TestBase(outp
 
         result.IsFailure.Should().BeTrue();
         result.IsSuccess.Should().BeFalse();
-        result.Error.Should().BeSameAs(DefaultError.Instance);
+        result.Error.Should().BeSameAs(DefaultResultError.Instance);
     }
 
     [Fact]
@@ -425,7 +425,7 @@ public partial class ResultTests(ITestOutputHelper outputHelper) : TestBase(outp
 
         result.Tap(onSuccess: _ => { }, onFailure: e => seen = e);
 
-        seen.Should().BeSameAs(DefaultError.Instance);
+        seen.Should().BeSameAs(DefaultResultError.Instance);
     }
 
     [Fact]
@@ -573,7 +573,7 @@ public partial class ResultTests(ITestOutputHelper outputHelper) : TestBase(outp
         var result = default(Result<Customer>);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().BeSameAs(DefaultError.Instance);
+        result.Error.Should().BeSameAs(DefaultResultError.Instance);
     }
 
     [Fact]

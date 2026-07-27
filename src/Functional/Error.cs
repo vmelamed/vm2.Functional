@@ -13,12 +13,12 @@ public abstract record Error(string Code, string Message);
 /// <summary>
 /// Represents the error to not initialize a type if its default state is forbidden, e.g. for <see cref="Result{T}"/> -- <c>default(Result&lt;T&gt;)</c>.
 /// </summary>
-public sealed record DefaultError() : Error("default", "default(Result<T>) is not allowed.")
+public sealed record DefaultResultError() : Error("default", "default(Result<T>) is not allowed.")
 {
     /// <summary>
     /// Gets the singleton instance of the DefaultError class.
     /// </summary>
-    public static DefaultError Instance { get; } = new();
+    public static DefaultResultError Instance { get; } = new();
 }
 
 /// <summary>
