@@ -50,7 +50,7 @@ public partial class ResultTests
     {
         // A defaulted struct and an explicit Fail(DefaultError.Instance) both surface DefaultError,
         // so they compare equal. This is the deliberate normalization in Equals/GetHashCode.
-        default(Result<int>).Equals(Fail<int>(DefaultError.Instance)).Should().BeTrue();
+        default(Result<int>).Equals(Fail<int>(DefaultResultError.Instance)).Should().BeTrue();
     }
 
     [Fact]
@@ -120,7 +120,7 @@ public partial class ResultTests
     public void GetHashCode_WhenDefaultVsExplicitDefaultError_ShouldMatch()
     {
         // Consistency with Equals: since default equals Fail(DefaultError), their hashes must match too.
-        default(Result<int>).GetHashCode().Should().Be(Fail<int>(DefaultError.Instance).GetHashCode());
+        default(Result<int>).GetHashCode().Should().Be(Fail<int>(DefaultResultError.Instance).GetHashCode());
     }
     #endregion
 

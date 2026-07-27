@@ -45,7 +45,7 @@ public class ErrorTests(ITestOutputHelper outputHelper) : TestBase(outputHelper)
     [Fact]
     public void DefaultError_Instance_ShouldBeSingleton()
     {
-        DefaultError.Instance.Should().BeSameAs(DefaultError.Instance);
-        DefaultError.Instance.Code.Should().Be("default");
+        DefaultResultError.Instance.Should().BeSameAs(DefaultResultError.Instance);
+        DefaultResultError.Instance.Code.Should().Be("default");
     }
 }
