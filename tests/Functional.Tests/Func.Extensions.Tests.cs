@@ -90,6 +90,7 @@ public class FuncExtensionsTests(ITestOutputHelper outputHelper) : TestBase(outp
         func3.Invoke(1, 2, 3).Returns(33);
         var f3 = func3.Apply(a1).Apply(a2);
         f3(a3).Should().Be(33);
+        func3.Apply(a1).Apply(a2)(a3).Should().Be(33);
         func3.Received(1).Invoke(a1, a2, a3);
 
         var func4 = Substitute.For<Func<int, int, int, int, int>>();
