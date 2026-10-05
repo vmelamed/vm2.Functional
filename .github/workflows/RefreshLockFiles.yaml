@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Val Melamed
+
 name: "Refresh NuGet Lock Files"
 
 on:
@@ -10,8 +13,6 @@ on:
 jobs:
   refresh:
     uses: vmelamed/vm2.DevOps/.github/workflows/_refresh_lockfiles.yaml@main
-    with:
-      dotnet-version: ${{ vars.DOTNET_VERSION || '10.0.x' }}
     secrets:
       GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
     permissions:

