@@ -1,9 +1,15 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Val Melamed
+
 name: "Rebuild Benchmark History"
 
 # Manually triggered (UI/mobile) per-repo entry point. Re-records this repo's benchmark history to Bencher.dev by running
 # every benchmark project under benchmarks/ N times (record-only: no thresholds; no failure on a noisy point). Use it when a
-# runner image change or a benchmark restructure invalidates the existing baseline. Shared and identical across repos — a repo
-# with no benchmarks/ simply has nothing to do.
+# runner image change or a benchmark restructure invalidates the existing baseline. Shared and identical across repos -- a
+# repo with no benchmarks/ simply has nothing to do. See docs/ARCHITECTURE.md#benchmark-threshold-management for the full
+# picture, and the separate, vm2.DevOps-only "RebuildBenchHistory.yaml (fan-out)" workflow that dispatches this one across
+# every vm2 repo at once -- do not confuse the two; this file must stay the thin per-repo dispatcher, never the fan-out
+# coordinator.
 
 on:
   workflow_dispatch:
@@ -12,6 +18,9 @@ on:
         description: Independent runs to record per benchmark
         type: number
         default: 10
+
+env:
+  VERBOSE: ${{ vars.VERBOSE || false }}
 
 permissions:
   contents: read

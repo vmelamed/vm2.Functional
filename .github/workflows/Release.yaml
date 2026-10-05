@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2025-2026 Val Melamed
+
 name: Publish Release NuGet Package
 
 # This workflow handles the publishing of NuGet stable releases. It is only **triggered manually** via the workflow_dispatch
@@ -17,32 +20,33 @@ env:
     [
     "src/Functional/Functional.csproj"
     ]
-  NUGET_SERVER: ${{ vars.NUGET_SERVER || 'github' }}
   PREPROCESSOR_SYMBOLS: ""
-  CONFIGURATION: ${{ vars.CONFIGURATION || 'Release' }} # The build configuration: Debug, Release, etc.
-  DOTNET_VERSION: ${{ vars.DOTNET_VERSION || '10.0.x' }} # The .NET SDK version to use.
-  MINVERTAGPREFIX: ${{ vars.MINVERTAGPREFIX || 'v' }} # The MinVer tag prefix.
-  MINVERDEFAULTPRERELEASEIDENTIFIERS: ${{ vars.MINVERDEFAULTPRERELEASEIDENTIFIERS || 'preview.0' }} # The MinVer default pre-release identifiers.
-  SAVE_PACKAGE_ARTIFACTS: ${{ vars.SAVE_PACKAGE_ARTIFACTS || false }} # Set the variable to "true" to save package artifacts.
-  VERBOSE: ${{ vars.VERBOSE || false }} # Set the variable to "true" to enable verbose logging in scripts.
+  NUGET_SERVER: ${{ vars.NUGET_SERVER || 'nuget' }}
+  NUGET_USERNAME: ${{ vars.NUGET_USERNAME || 'valo' }}
+  MINVERTAGPREFIX: ${{ vars.MINVERTAGPREFIX || 'v' }}                           # The MinVer tag prefix.
+  VERBOSE: ${{ vars.VERBOSE || false }}                                         # Set the variable to "true" to enable verbose logging in scripts.
+  REASON: ${{ inputs.reason }}
 
+# <<<=== begin shared content
 jobs:
   get-params:
     name: Prepare the parameters
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref_name == 'main' }} # Only allow manual releases from the main branch, as a safety measure against accidental releases from PRs or other branches.
+    # Only allow manual releases from the main branch, as a safety measure against accidental releases from PRs or other branches.
+    if: github.event_name == 'workflow_dispatch' && github.ref_name == 'main'
     outputs:
-      dotnet-version: ${{ steps.gather-params.outputs.dotnet-version }}
       package-projects: ${{ steps.gather-params.outputs.package-projects }}
       preprocessor-symbols: ${{ steps.gather-params.outputs.preprocessor-symbols }}
       minver-tag-prefix: ${{ steps.gather-params.outputs.minver-tag-prefix }}
-      minver-prerelease-id: ${{ steps.gather-params.outputs.minver-prerelease-id }}
       reason: ${{ steps.gather-params.outputs.reason }}
       nuget-server: ${{ steps.gather-params.outputs.nuget-server }}
-      save-package-artifacts: ${{ steps.gather-params.outputs.save-package-artifacts }}
+      nuget-username: ${{ steps.gather-params.outputs.nuget-username }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Setup DevOps environment variables
         id: setup-env
@@ -58,63 +62,166 @@ jobs:
         run: |
           source $DEVOPS_LIB_DIR/gh_core.sh
 
-          dotnet_version='${{ env.DOTNET_VERSION }}'
-          package_projects=$(is_safe_json_array '${{ env.PACKAGE_PROJECTS }}' '[]' is_safe_existing_file)
-          package_projects_len=$(jq 'length // 0' <<< "$package_projects")
-          preprocessor_symbols='${{ env.PREPROCESSOR_SYMBOLS }}'
-          minver_tag_prefix='${{ env.MINVERTAGPREFIX }}'
-          minver_prerelease_id='${{ env.MINVERDEFAULTPRERELEASEIDENTIFIERS }}'
-          nuget_server='${{ env.NUGET_SERVER }}'
-          save_package_artifacts='${{ env.SAVE_PACKAGE_ARTIFACTS }}'
-          reason="Stable Release (main manually tagged with a release tag)"
+          package_projects=$PACKAGE_PROJECTS
+          validate_json_array package_projects '[]' is_safe_existing_file
 
-          if [[ '${{ github.event_name }}' == "workflow_dispatch" ]]; then
-              # For UI manually triggered runs (workflow_dispatch event), use the arg. values from env: vars, secrets, defaults
-              # and override with the inputs from the UI:
+          preprocessor_symbols=$PREPROCESSOR_SYMBOLS
+          minver_tag_prefix=$MINVERTAGPREFIX
+          nuget_server=$NUGET_SERVER
+          nuget_username=${NUGET_USERNAME:-}
 
-              reason='${{ inputs.reason }}'
-          fi
+          # Release is always activated manually from the GitHub Actions UI:
+          reason=$REASON
+
+          declare -a args=(
+              --force
+              --quiet
+              --markdown
+              --gh-escape
+              --header "Job get-params outputs:"
+              package_projects
+              preprocessor_symbols
+              minver_tag_prefix
+              reason
+              nuget_server
+              nuget_username
+          )
+          dump_vars "${args[@]}" | to_summary
 
           # Set the outputs:
-          args_to_github_output \
-              package_projects \
-              package_projects_len \
-              dotnet_version \
-              preprocessor_symbols \
-              minver_tag_prefix \
-              minver_prerelease_id \
-              reason \
-              nuget_server \
-              save_package_artifacts
+          args=(
+              package_projects
+              preprocessor_symbols
+              minver_tag_prefix
+              reason
+              nuget_server
+              nuget_username
+          )
+          args_to_github_output "${args[@]}"
 
   log-trigger:
     name: Log manual trigger reason
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
+      - name: Setup DevOps environment variables
+        id: setup-env
+        uses: vmelamed/vm2.DevOps/.github/actions/setup-env@main
+
       - name: Log manual trigger reason
         run: |
-          echo "::notice::Manual release triggered by ${{ github.actor }}"
-          echo "::notice::Reason: ${{ inputs.reason }}"
+          source $DEVOPS_LIB_DIR/gh_core.sh
 
-  release:
-    name: Release - package and publish NuGet stable release
+          gh_reason=$(gh_escape "$REASON")
+
+          printf '::notice::Manual release triggered by %s. Reason: %s\n' '${{ github.actor }}' "$gh_reason"
+          printf '## Manual trigger\n\n**By:** %s\n**Reason:** %s\n' '${{ github.actor }}' "$gh_reason" | to_stdout
+
+  build-release:
+    name: Release - package, changelog and tag with release (stable) version
     needs:
       - get-params
     uses: vmelamed/vm2.DevOps/.github/workflows/_release.yaml@main
     secrets:
       RELEASE_PAT: ${{ secrets.RELEASE_PAT }} # Required PAT for pushing changelog and tags past branch protection.
-      # Make sure to set the API key issued by the selected NuGet server.
-      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
     permissions:
       contents: write # Required to checkout the code, push changelog, and create tags
-      packages: write # Required to add stable NuGet packages
+      packages: read  # Required to build stable NuGet packages
+      actions: read   # Required to checkout the code, push changelog, and create tags
     with:
-      dotnet-version: ${{ needs.get-params.outputs.dotnet-version }}
       package-projects: ${{ needs.get-params.outputs.package-projects }}
       preprocessor-symbols: ${{ needs.get-params.outputs.preprocessor-symbols }}
       minver-tag-prefix: ${{ needs.get-params.outputs.minver-tag-prefix }}
-      minver-prerelease-id: ${{ needs.get-params.outputs.minver-prerelease-id }}
       reason: ${{ needs.get-params.outputs.reason }}
-      nuget-server: ${{ needs.get-params.outputs.nuget-server }}
-      save-package-artifacts: ${{ fromJson(needs.get-params.outputs.save-package-artifacts) }}
+
+  publish-release:
+    name: Publish NuGet release packages
+    needs:
+      - get-params
+      - build-release
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write # Required to push to GitHub Packages with github.token
+      actions: read   # Required to read workflow run artifact IDs (for downloading package artifacts if the NuGet server is 'nuget')
+      id-token: write # Required for authentication with the NuGet server
+    steps:
+      - name: Download package artifact
+        # This job never builds anything -- it only downloads .nupkg files another job already produced and pushes
+        # them -- so "packages" here is just a local staging directory for this job's own runner, not the
+        # Directory.Build.props-derived ArtifactsPath the rest of the pipeline uses for real build output.
+        #
+        # merge-multiple: true flattens all downloaded package artifacts into one directory -- without it, each
+        # artifact-id lands in its own nested subfolder (packages/<artifact-name>/*.nupkg), one level deeper than
+        # the flat packages/*.nupkg glob the publish step below expects.
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ needs.build-release.outputs.artifact-ids }}
+          path: packages
+          merge-multiple: true
+
+      - name: Setup DevOps environment variables
+        id: setup-env
+        uses: vmelamed/vm2.DevOps/.github/actions/setup-env@main
+
+      - name: Authenticate with NuGet.org trusted publishing to get steps.nuget-login.outputs.NUGET_API_KEY
+        if: needs.get-params.outputs.nuget-server == 'nuget'
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ needs.get-params.outputs.nuget-username }}
+
+      - name: Publish NuGet release packages
+        shell: bash
+        env:
+          NUGET_SERVER: ${{ needs.get-params.outputs.nuget-server }}
+          NUGET_API_KEY: >-
+            ${{ needs.get-params.outputs.nuget-server == 'github' && github.token
+             || needs.get-params.outputs.nuget-server == 'nuget'  && steps.nuget-login.outputs.NUGET_API_KEY
+             || needs.get-params.outputs.nuget-server != 'github' &&
+                needs.get-params.outputs.nuget-server != 'nuget'  && secrets.NUGET_API_KEY
+             || '' }}
+        run: |
+          source $DEVOPS_LIB_DIR/gh_core.sh
+
+          set -euo pipefail
+
+          declare -xri err_missing_argument
+          declare -xri err_argument_value
+
+          artifacts_dir="packages"
+          server_name=$NUGET_SERVER
+          server_url=""
+
+          case "$NUGET_SERVER" in
+              nuget )
+                  server_name="NuGet.org"
+                  server_url="https://api.nuget.org/v3/index.json"
+                  ;;
+
+              github )
+                  server_name="GitHub Packages"
+                  server_url="https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+                  ;;
+
+              http://*|https://* )
+                  server_name=$NUGET_SERVER
+                  server_url=$NUGET_SERVER
+                  # for this unknown custom URL, we assume that
+                  #  - the server URL is the same as the server name
+                  #  - the $NUGET_API_KEY is expected to be provided via secrets.NUGET_API_KEY as is
+                  ;;
+
+              * ) exit_with_error -ec "$err_argument_value" -ns "Unsupported NuGet server: $NUGET_SERVER. Supported values: 'nuget', 'github', 'custom URL'."
+                  ;;
+          esac
+
+          [[ -n "$NUGET_API_KEY" ]] || exit_with_error -ec "$err_missing_argument" -ns "No API key provided for server '$server_name'"
+
+          for pkg in "$artifacts_dir"/*.nupkg; do
+              trace "Publishing package: $pkg"
+              dotnet nuget push "$pkg" \
+                  --source "$server_url" \
+                  --api-key "$NUGET_API_KEY" \
+                  --skip-duplicate
+          done
+# ===>>> end shared content
