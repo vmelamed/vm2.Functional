@@ -11,6 +11,8 @@ insert_final_newline = true
 
 # C# files
 [*.cs]
+charset = utf-8
+
 file_header_template = SPDX-License-Identifier: MIT\nCopyright (c) 2025-2026 Val Melamed
 
 # IDE0073: The file header does not match the required text
