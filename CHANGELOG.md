@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.0-preview.2 - 2026-10-27
+
+### Removed
+
+- remove IEquatable<NoneType> from Option<T>
+- public bool Equals(NoneType _) => !_isSome;
+
 ## v1.0.0-preview.1 - 2026-10-27
 
 ### Added
