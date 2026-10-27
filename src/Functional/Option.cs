@@ -264,20 +264,6 @@ public readonly struct Option<T> : IEquatable<Option<T>> where T : notnull
 
     #region .NET identity
     /// <summary>
-    /// Determines whether the current <see cref="Option{T}"/> instance is equal to an instance of <see cref="NoneType"/>.
-    /// </summary>
-    /// <param name="_">
-    /// The <see cref="NoneType"/> instance to compare with the current <see cref="Option{T}"/> instance.
-    /// This parameter is ignored, as the equality is determined solely by the state of the current <see cref="Option{T}"/>
-    /// instance.
-    /// </param>
-    /// <returns>
-    /// <see langword="true"/> if the current <see cref="Option{T}"/> instance represents the absence of a value;
-    /// otherwise, <see langword="false"/>.
-    /// </returns>
-    public bool Equals(NoneType _) => !_isSome;
-
-    /// <summary>
     /// Determines whether the current <see cref="Option{T}"/> instance is equal to another instance of <see cref="Option{T}"/>.
     /// </summary>
     /// <param name="other">The <see cref="Option{T}"/> instance to compare with the current instance.</param>
