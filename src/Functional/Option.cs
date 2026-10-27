@@ -280,9 +280,8 @@ public readonly struct Option<T> : IEquatable<Option<T>> where T : notnull
     /// Determines whether the current <see cref="Option{T}"/> instance is equal to an object.
     /// </summary>
     /// <param name="obj">
-    /// The object to compare with the current <see cref="Option{T}"/> instance. This object can be either an instance of
-    /// <see cref="NoneType"/> or an instance of <see cref="Option{T}"/>. If the object is of any other type, the method returns
-    /// <see langword="false"/>.
+    /// The object to compare with the current <see cref="Option{T}"/> instance. This object can be an instance of
+    /// <see cref="Option{T}"/>. If the object is of any other type, the method returns <see langword="false"/>.
     /// </param>
     /// <returns>
     /// <see langword="true"/> if the current <see cref="Option{T}"/> instance is equal to the specified object; otherwise,
@@ -299,12 +298,7 @@ public readonly struct Option<T> : IEquatable<Option<T>> where T : notnull
     /// <returns>
     /// A hash code for the current <see cref="Option{T}"/> instance.
     /// </returns>
-    public override int GetHashCode()
-        => HashCode.Combine(
-                typeof(Option<T>).GetHashCode(),
-                _isSome
-                    ? _value?.GetHashCode() ?? 0
-                    : 0);
+    public override int GetHashCode() => _isSome ? _value.GetHashCode() : 0;
 
     /// <summary>
     /// Determines whether two <see cref="Option{T}"/> instances are equal. Two instances are considered equal if they are both
