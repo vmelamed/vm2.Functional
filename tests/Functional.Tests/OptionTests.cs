@@ -188,7 +188,7 @@ public partial class OptionTests(ITestOutputHelper outputHelper) : TestBase(outp
         f.Invoke(Arg.Any<int>()).Returns(ci => Some(ci.Arg<int>() * 2));
         Option<int> option = None;
 
-        option.Bind(f).Should().Be(None);
+        option.Bind(f).Should().Be(default(Option<int>));
         f.Received(0).Invoke(21);
     }
     #endregion

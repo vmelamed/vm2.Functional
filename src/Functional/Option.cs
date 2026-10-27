@@ -303,10 +303,7 @@ public readonly struct Option<T> : IEquatable<NoneType>, IEquatable<Option<T>> w
     /// <see langword="false"/>.
     /// </returns>
     public override bool Equals(object? obj)
-        => obj is NoneType none
-            ? Equals(none)
-            : obj is Option<T> option &&
-                Equals(option);
+        => obj is Option<T> option && Equals(option);
 
     /// <summary>
     /// Returns a hash code for the current <see cref="Option{T}"/> instance. The hash code is computed based on the state of
