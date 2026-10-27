@@ -18,7 +18,7 @@ namespace vm2.Functional;
 /// <see cref="int"/>? are not valid type parameters. Use the function <see cref="Option.ToOption{T}(T?)"/> to convert
 /// potentially nullable values to <see cref="Option{T}"/> values instead.
 /// </remarks>
-public readonly struct Option<T> : IEquatable<NoneType>, IEquatable<Option<T>> where T : notnull
+public readonly struct Option<T> : IEquatable<Option<T>> where T : notnull
 {
     #region Fields
     /// <summary>
