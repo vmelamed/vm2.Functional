@@ -167,9 +167,14 @@ public static class Option
             Func<T, R, C> resultSelector)
             where R : notnull
             where C : notnull
-            => option.Bind(
+        {
+            ArgumentNullException.ThrowIfNull(selector);
+            ArgumentNullException.ThrowIfNull(resultSelector);
+
+            return option.Bind(
                         t => selector(t)
                                 .Map(r => resultSelector(t, r)));
+        }
 
         /// <summary>
         /// Preserves the "some" option, if the contained value satisfies the <paramref name="predicate"/>; otherwise, returns

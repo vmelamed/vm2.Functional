@@ -139,8 +139,13 @@ public static class Result
             Func<T, R, C> resultSelector)
             where R : notnull
             where C : notnull
-            => result.Bind(
+        {
+            ArgumentNullException.ThrowIfNull(selector);
+            ArgumentNullException.ThrowIfNull(resultSelector);
+
+            return result.Bind(
                         t => selector(t)
                                 .Map(r => resultSelector(t, r)));
+        }
     }
 }

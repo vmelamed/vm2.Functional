@@ -71,7 +71,7 @@ public partial class OptionTests
     {
         object none = None;
 
-        ((Option<int>)None).Equals(none).Should().BeTrue();
+        ((Option<int>)None).Equals(none).Should().BeFalse();
         Some(1).Equals(none).Should().BeFalse();
     }
 

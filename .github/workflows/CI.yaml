@@ -72,10 +72,10 @@ env:
     [
     "vm2.Functional.slnx"
     ]
-  # TEST_PROJECTS: >-
-  #   [
-  #   "tests/Functional.Tests/Functional.Tests.csproj"
-  #   ]
+  TEST_PROJECTS: >-
+    [
+    "tests/Functional.Tests/Functional.Tests.csproj"
+    ]
   # BENCHMARK_PROJECTS: >-
   #   [
   #   "benchmarks/Functional.Benchmarks/Functional.Benchmarks.csproj"
