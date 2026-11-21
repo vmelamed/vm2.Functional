@@ -7,7 +7,7 @@ namespace vm2.Functional;
 /// Represents the result of an operation that can be in one of two states or cases:
 /// <list type="bullet">
 /// <item><b>success</b>: represents the outcome of a successful operation that returned value of type <typeparamref name="T"/></item>
-/// <item><b>failure</b>: represents the outcome of a failed operation explained by an <see cref="Functional.Error"/> instance</item>
+/// <item><b>failure</b>: represents the outcome of a failed operation explained by an <see cref="Error"/> instance</item>
 /// </list>
 /// </summary>
 /// <typeparam name="T">The type of the value returned by a successful operation. MUST NOT be:
@@ -15,19 +15,19 @@ namespace vm2.Functional;
 /// <item>nullable reference type, e.g., <c>string?</c>. Use <c>Option&lt;string&gt;</c> instead</item>
 /// <item>nullable value type, e.g. <c>int?</c>. Use <c>Option&lt;int&gt;</c> instead</item>
 /// <item><see cref="void"/>. Use <see cref="Unit"/> instead.</item>
-/// <item><see cref="Functional.Error"/></item>
+/// <item><see cref="Error"/></item>
 /// </list>
 /// </typeparam>
 /// <remarks>
 /// Known elsewhere as <c>Either</c> (Haskell/Scala, where "failure" is <c>Left</c> and "success" is <c>Right</c>) or
 /// <c>Result</c> (F#/Rust, where "failure" is <c>Error</c>/<c>Err</c>). This library pins the failure side to
-/// <see cref="Functional.Error"/>, so a <c>Result&lt;T&gt;</c> is effectively an <c>Either&lt;Error, T&gt;</c>.
+/// <see cref="Error"/>, so a <c>Result&lt;T&gt;</c> is effectively an <c>Either&lt;Error, T&gt;</c>.
 /// <para/>
 /// If the type <typeparamref name="T"/> is legitimately nullable, use <c>Result&lt;Option&lt;T&gt;&gt;</c>.
 /// <para/>
 /// When the operation carries only side effects and has no meaningful return value, use <see cref="Unit"/> as the type parameter.
 /// <para/>
-/// If the <typeparamref name="T"/> is <see cref="Functional.Error"/> the implicit type-cast operators — <see cref="Result{T}(T)"/>
+/// If the <typeparamref name="T"/> is <see cref="Error"/> the implicit type-cast operators — <see cref="Result{T}(T)"/>
 /// and <see cref="Result{T}(Error)"/> apply, and the compiler reports <b>CS0457 "Ambiguous user defined conversions"</b>. This
 /// is a safe failure mode - a compile error, not a silently wrong conversion. So Result&lt;Error&gt; is simply an unsupported
 /// instantiation (does not compile) rather than a latent trap.
@@ -44,12 +44,12 @@ public readonly struct Result<T> : IEquatable<Result<T>> where T : notnull
     /// <summary>
     /// The error associated with a failed <see cref="Result{T}"/>. If the <see cref="Result{T}"/> represents a success, this
     /// field is intentionally <see langword="null"/> and it is not used. If the <see cref="Result{T}"/> represents a failure
-    /// and the error is not set, and it will be replaced by <see cref="DefaultResultError.Instance"/> on the fly -
+    /// and the error is not set, it will be replaced by <see cref="DefaultResultError.Instance"/> on the fly -
     /// <see cref="Functional.Error"/>.
     /// </summary>
     readonly Error? _error;
 
-#pragma warning disable IDE0032 // Use auto property.
+    #pragma warning disable IDE0032 // Use auto property.
     // We cannot use auto property -- it would allow for the following bug:
     // var ok = Result<int>.Ok(5);
     // var broken = ok with { IsSuccess = false };
@@ -59,7 +59,7 @@ public readonly struct Result<T> : IEquatable<Result<T>> where T : notnull
     /// Indicates whether the result represents a successful operation.
     /// </summary>
     readonly bool _isSuccess;
-#pragma warning restore IDE0032 // Use auto property
+    #pragma warning restore IDE0032 // Use auto property
     #endregion
 
     #region Properties

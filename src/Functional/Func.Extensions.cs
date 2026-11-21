@@ -116,7 +116,7 @@ public static class FuncExtensions
     }
 
     /// <summary>
-    /// Curries a function with two parameters: converting a function with N parameters into a chain of functions each taking a
+    /// Curries a function with three parameters: converting a function with N parameters into a chain of functions each taking a
     /// single parameter from the original function in order they appear.
     /// </summary>
     /// <typeparam name="T1">The type of the first parameter of the function.</typeparam>
@@ -133,7 +133,7 @@ public static class FuncExtensions
     }
 
     /// <summary>
-    /// Curries a function with two parameters: converting a function with N parameters into a chain of functions each taking a
+    /// Curries a function with four parameters: converting a function with N parameters into a chain of functions each taking a
     /// single parameter from the original function in order they appear.
     /// </summary>
     /// <typeparam name="T1">The type of the first parameter of the function.</typeparam>

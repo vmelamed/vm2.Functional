@@ -121,7 +121,7 @@ public partial class ResultTests(ITestOutputHelper outputHelper) : TestBase(outp
 
         var matched = result.Match(onSuccess: _ => "ok", onFailure: e => e.Code);
 
-        matched.Should().Be("default");
+        matched.Should().Be(DefaultResultError.ErrorCode);
     }
 
     [Fact]

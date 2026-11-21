@@ -13,7 +13,7 @@ public class ErrorTests(ITestOutputHelper outputHelper) : TestBase(outputHelper)
 
         var aggregateError = new AggregateError(error1, error2);
 
-        aggregateError.Code.Should().Be("aggregate");
+        aggregateError.Code.Should().Be(AggregateError.ErrorCode);
 
         aggregateError.Message.Should().Be("message1\nmessage2");
 
@@ -46,6 +46,6 @@ public class ErrorTests(ITestOutputHelper outputHelper) : TestBase(outputHelper)
     public void DefaultError_Instance_ShouldBeSingleton()
     {
         DefaultResultError.Instance.Should().BeSameAs(DefaultResultError.Instance);
-        DefaultResultError.Instance.Code.Should().Be("default");
+        DefaultResultError.Instance.Code.Should().Be(DefaultResultError.ErrorCode);
     }
 }
